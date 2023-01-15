@@ -1,0 +1,1890 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Neural Networks | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/neural-networks/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Is It a Cat or a Dog? A Neural Network Application in OpenCV]]></title>
+    <link href="http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
+    <updated>2016-01-31T13:23:41-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
+    <content type="html"><![CDATA[<p style="text-align:center;"><img src="/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
+
+<p>From time to time, a website named <a href="http://www.kaggle.com">Kaggle</a> hosts several competitions in the fields of Data Science and Computer Vision. One of those competitions was the <a href="https://www.kaggle.com/c/dogs-vs-cats">Dogs vs. Cats</a> challenge, where the objective was &ldquo;to create an algorithm to distinguish dogs from cats&rdquo;. Although this particular challenge already has been finished, I thought that it&rsquo;d give me a pretty good material to a tutorial. Let&rsquo;s learn how to solve this problem together using OpenCV!</p>
+
+<!-- more --> 
+
+
+<p>Here&rsquo;s a live demo:</p>
+
+<iframe src="http://catordog-picoledelimao.rhcloud.com/" width="100%" height="500px"></iframe>
+
+
+<h2>Setup environment</h2>
+
+<p>I&rsquo;ll assume that you already have OpenCV 3.0 configured in your machine (if you don&rsquo;t, you can do it <a href="http://docs.opencv.org/2.4/doc/tutorials/introduction/table_of_content_introduction/table_of_content_introduction.html#table-of-content-introduction">here</a>). Also, I&rsquo;ll use the Boost library to read files in a directory (you can perhaps skip it and replace my code by dirent.h. It should work in the same way). You can download Boost <a href="http://www.boost.org/">here</a>. Those are the only two external libraries that I&rsquo;m going to use in this tutorial.</p>
+
+<p>Ok, ok, let&rsquo;s start by downloading the training and test sets. Click <a href="https://www.kaggle.com/c/dogs-vs-cats/data">here</a> and download the <a href="https://www.kaggle.com/c/dogs-vs-cats/download/test1.zip">test1.zip</a> (271.15mb). You may need to register first. After downloading, extract them to a folder of your preference. The training set will be used to adjust the parameters of our neural network (we will talk in details later), while the test set will be used to check the performance of our neural network (how good it is at generalizing unseen examples). Unhappily, the provided test set by Kaggle is not labeled, so we will split the training set (in the provided link) and use a part of it as our test set.</p>
+
+<h2>Reading training samples</h2>
+
+<p>Let&rsquo;s start coding! First, let&rsquo;s start by reading the list of files within the training set directory:</p>
+
+<pre><code class="C++ opencv_ann.cpp">#include &lt;vector&gt;
+#include &lt;algorithm&gt;
+#include &lt;functional&gt;
+#include &lt;map&gt;
+#include &lt;set&gt;
+#include &lt;fstream&gt;
+
+#include &lt;opencv2/core/core.hpp&gt;
+#include &lt;opencv2/highgui/highgui.hpp&gt;
+#include &lt;opencv2/features2d/features2d.hpp&gt;
+#include &lt;opencv2/ml/ml.hpp&gt;
+
+#include &lt;boost/filesystem.hpp&gt;
+
+namespace fs = boost::filesystem;
+
+/**
+ * Get all files in directory (not recursive)
+ * @param directory Directory where the files are contained
+ * @return A list containing the file name of all files inside given directory
+ **/
+std::vector&lt;std::string&gt; getFilesInDirectory(const std::string&amp; directory)
+{
+    std::vector&lt;std::string&gt; files;
+    fs::path root(directory);
+    fs::directory_iterator it_end;
+    for (fs::directory_iterator it(root); it != it_end; ++it)
+    {
+        if (fs::is_regular_file(it-&gt;path()))
+        {
+            files.push_back(it-&gt;path().string());
+        }
+    }
+    return files;
+}
+
+
+int main(int argc, char** argv)
+{
+    if (argc != 4)
+    {
+        std::cerr &lt;&lt; "Usage: &lt;IMAGES_DIRECTORY&gt;  &lt;NETWORK_INPUT_LAYER_SIZE&gt; &lt;TRAIN_SPLIT_RATIO&gt;" &lt;&lt; std::endl;
+        exit(-1);
+    }
+    std::string imagesDir = argv[1];
+    int networkInputSize = atoi(argv[2]);
+    float trainSplitSize = atof(argv[3]);
+
+    std::cout &lt;&lt; "Reading training set..." &lt;&lt; std::endl;
+    double start = (double)cv::getTickCount();
+    std::vector&lt;std::string&gt; files = getFilesInDirectory(imagesDir);
+    std::random_shuffle(files.begin(), files.end());
+}
+</code></pre>
+
+<p>The function <code>getFilesInDirectory</code> expects as input a directory and returns a list of filenames within this directory. In our <code>main</code>, we expect to receive three parameters from command line: The directory where our training set is stored, the size of our network input layer and the ratio of our training set (i.e., 0.75 indicates that 75% of the images within the training set will be used to train our neural network while the remaining 25% will be used to test it). We then shuffle the list of filenames (in order to prevent <em>bias</em>). Pretty straight-forward until here, aye? :)</p>
+
+<p>Now we are going to iterate over each filename inside <code>files</code> and read the image associated to it. Since we will do it twice (one during the training step and another during the test step), let&rsquo;s create a function apart in order to modularize our code.</p>
+
+<pre><code>typedef std::vector&lt;std::string&gt;::const_iterator vec_iter;
+
+/**
+ * Read images from a list of file names and returns, for each read image,
+ * its class name and its local descriptors
+ */
+void readImages(vec_iter begin, vec_iter end, std::function&lt;void (const std::string&amp;, const cv::Mat&amp;)&gt; callback)
+{
+    for (auto it = begin; it != end; ++it)
+    {
+        std::string filename = *it;
+        std::cout &lt;&lt; "Reading image " &lt;&lt; filename &lt;&lt; "..." &lt;&lt; std::endl;
+        cv::Mat img = cv::imread(filename, 0);
+        if (img.empty())
+        {
+            std::cerr &lt;&lt; "WARNING: Could not read image." &lt;&lt; std::endl;
+            continue;
+        }
+        std::string classname = getClassName(filename);
+        cv::Mat descriptors = getDescriptors(img);
+        callback(classname, descriptors);
+    }
+}
+</code></pre>
+
+<p>There it is. The <code>readImages</code> function expect to receive as input two vector iterators (one for the start of our vector and another for the end, indicating the range from which we will iterate over). Finally, it expects another third parameter, a lambda function called &ldquo;callback&rdquo; (lambda functions are only available on C++11, so enable it on compiler by adding the <code>-std=c++11</code> flag or <code>-std=c++0x</code> on old compilers). Now let&rsquo;s look more carefuly on what&rsquo;s happening inside this function.</p>
+
+<p>We use a <code>for</code> to iterate over each filename between the limiters <code>begin</code> and <code>end</code>. For each filename, we read its associated image through the OpenCV <code>imread</code> function. The second parameter passed to <code>imread</code> indicates the color space (0 = gray scale. We don&rsquo;t need the color information in this example. You&rsquo;ll find the explanation later). After calling <code>imread</code>, we check if we could really read the image (through the <code>empty</code> method). If don&rsquo;t, we skip to the next filename. Otherwise, we get the class name and the descriptors associated to the read image and return them to the &ldquo;callback&rdquo; function. Now let&rsquo;s implement the <code>getClassName</code> and <code>getDescriptors</code> functions.</p>
+
+<p>If you look at the files inside the training set you extracted, you will find out that they are named as &ldquo;dog.XXXXX.jpg&rdquo; or &ldquo;cat.XXXXX.jpg&rdquo;. The first three letters is always the class name, where the remaining is only an identifier. So let&rsquo;s get those three first letters!</p>
+
+<pre><code>/**
+ * Extract the class name from a file name 
+ */
+inline std::string getClassName(const std::string&amp; filename)
+{
+    return filename.substr(filename.find_last_of('/') + 1, 3);
+}
+</code></pre>
+
+<p>Now what should the <code>getDescriptors</code> function looks like? Let&rsquo;s figure out on the next topic.</p>
+
+<h2>Extracting features</h2>
+
+<p>There are several approaches here. We could use the <a href="https://en.wikipedia.org/wiki/Color_histogram"><strong>color histogram</strong></a>, or perhaps the <a href="https://en.wikipedia.org/wiki/Histogram_of_oriented_gradients"><strong>histogram of oriented gradients</strong></a>, etc., &hellip; However, I&rsquo;m going through a different approach. I&rsquo;m going to use the <a href="http://isit.u-clermont1.fr/~ab/Publications/Alcantarilla_Bartoli_Davison_ECCV12.pdf"><strong>KAZE</strong></a> algorithm to extract local features from the image. Since we can&rsquo;t submit local features to a neural network (because the number of descriptors varies), I&rsquo;m also going to use the <a href="https://en.wikipedia.org/wiki/Bag-of-words_model_in_computer_vision"><strong>Bag of words</strong></a> strategy in order to address this problem, turning all set of descriptors into a single <strong>histogram of visual words</strong>, and THAT will be used as input to our neural network. Got it? Excellent! So let&rsquo;s implement the <code>getDescriptors</code> to extract the KAZE features from an image, and later, after all KAZE features had been extracted, we&rsquo;ll apply the Bag of Words technique.</p>
+
+<pre><code>
+/**
+ * Extract local features for an image
+ */
+cv::Mat getDescriptors(const cv::Mat&amp; img)
+{
+    cv::Ptr&lt;cv::KAZE&gt; kaze = cv::KAZE::create();
+    std::vector&lt;cv::KeyPoint&gt; keypoints;
+    cv::Mat descriptors;
+    kaze-&gt;detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+    return descriptors;
+}
+</code></pre>
+
+<p>Ok, now let&rsquo;s go back to our main:</p>
+
+<pre><code>
+struct ImageData 
+{
+    std::string classname;
+    cv::Mat bowFeatures;
+};
+
+int main(int argc, char** argv)
+{
+    if (argc != 4)
+    {
+        std::cerr &lt;&lt; "Usage: &lt;IMAGES_DIRECTORY&gt;  &lt;NETWORK_INPUT_LAYER_SIZE&gt; &lt;TRAIN_SPLIT_RATIO&gt;" &lt;&lt; std::endl;
+        exit(-1);
+    }
+    std::string imagesDir = argv[1];
+    int networkInputSize = atoi(argv[2]);
+    float trainSplitRatio = atof(argv[3]);
+
+    std::cout &lt;&lt; "Reading training set..." &lt;&lt; std::endl;
+    double start = (double)cv::getTickCount();
+    std::vector&lt;std::string&gt; files = getFilesInDirectory(imagesDir);
+    std::random_shuffle(files.begin(), files.end());
+
+    cv::Mat descriptorsSet;
+    std::vector&lt;ImageData*&gt; descriptorsMetadata;
+    std::set&lt;std::string&gt; classes;
+    readImages(files.begin(), files.begin() + (size_t)(files.size() * trainSplitRatio), 
+        [&amp;](const std::string&amp; classname, const cv::Mat&amp; descriptors) {
+        // Append to the set of classes
+        classes.insert(classname);
+        // Append to the list of descriptors
+        descriptorsSet.push_back(descriptors);
+        // Append metadata to each extracted feature
+        ImageData* data = new ImageData;
+        data-&gt;classname = classname;
+        data-&gt;bowFeatures = cv::Mat::zeros(cv::Size(networkInputSize, 1), CV_32F);
+        for (int j = 0; j &lt; descriptors.rows; j++)
+        {
+            descriptorsMetadata.push_back(data);
+        }
+    });
+    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>I created a struct named <code>ImageData</code>, with two fields: <code>classname</code> and <code>bowFeatures</code>. Before calling the <code>readImages</code> function, I instanciated three variables: <code>descriptorsSet</code> (the set of descriptors of all read images), <code>descriptorsMetadata</code> (a vector of the struct we previously created. It&rsquo;s being filled in such way that it has the same number of elements as the number of rows of <code>descriptorsSet</code>. That way, the i-th row of <code>descriptorsSet</code> can also be used to access its metadata (the class name, for instance)). And, for last, the <code>classes</code> variables (a set containing all found classes).</p>
+
+<h2>Training the Bag of Words</h2>
+
+<p>Now that we have the whole set of descriptors stored in the <code>descriptorsSet</code> variable, we can apply the Bag of words strategy. The Bag of Words algorithm is really simple: First we use a clustering algorithm (such as <a href="https://en.wikipedia.org/wiki/K-means_clustering"><strong>k-means</strong></a>) to obtain k centroids. Each centroid representates a <strong>visual word</strong> (the set of visual words is often called <strong>vocabulary</strong>). For each image, we create a histogram of size M, where M is the number of visual words. Now, for each extracted descriptor from the image, we measure its distance to all visual words, obtaining the index of the nearest one. We use that index to increment the position of histogram corresponding to that index, obtaining, that way, <strong>a histogram of visual words</strong>, that can later be submitted to our neural network.</p>
+
+<p style="text-align:center;"><img src="/images/posts/ann_2.jpg" alt="" /><br>
+Source: <a href="http://www.ifp.illinois.edu/~yuhuang/sceneclassification.html">http://www.ifp.illinois.edu/~yuhuang/sceneclassification.html</a></p>
+
+<pre><code>int main()
+{
+    ...
+
+    std::cout &lt;&lt; "Creating vocabulary..." &lt;&lt; std::endl;
+    start = (double)cv::getTickCount();
+    cv::Mat labels;
+    cv::Mat vocabulary;
+    // Use k-means to find k centroids (the words of our vocabulary)
+    cv::kmeans(descriptorsSet, networkInputSize, labels, cv::TermCriteria(cv::TermCriteria::EPS + 
+        cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
+    // No need to keep it on memory anymore
+    descriptorsSet.release();
+    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+
+    // Convert a set of local features for each image in a single descriptors
+    // using the bag of words technique
+    std::cout &lt;&lt; "Getting histograms of visual words..." &lt;&lt; std::endl;
+    int* ptrLabels = (int*)(labels.data);
+    int size = labels.rows * labels.cols;
+    for (int i = 0; i &lt; size; i++)
+    {
+        int label = *ptrLabels++;
+        ImageData* data = descriptorsMetadata[i];
+        data-&gt;bowFeatures.at&lt;float&gt;(label)++;
+    }
+}
+</code></pre>
+
+<p>We use OpenCV <code>k-means</code> function to obtain k centroids (where k is the size of our network input layer, since the size of our histogram must be compatible with it), stored in the <code>vocabulary</code> variable. We also pass an additional parameter, <code>labels</code>, indicating the index of the nearest cluster for each descriptor, so we don&rsquo;t need to computer it twice. Now, iterating over each element of <code>labels</code>, we fill our histograms, the <code>bowFeatures</code> field of our <code>ImageData</code> struct. The strategy of filling the <code>descriptorsMetadata</code> to make its number of elements as the number of rows of <code>descriptorsSet</code> seemed to be very convenient here, as we can directly access the histogram associated to each descriptor.</p>
+
+<h2>Training the neural network</h2>
+
+<p>Now that we have the histogram of visual words for each image, we can finally supply them to our neural network. But, before that, we need to tell to our neural network the expected output for each image. The reason for that is simple: A neural network, or more precisely, the variation of neural network that we are interested in using, called <a href="https://en.wikipedia.org/wiki/Multilayer_perceptron"><strong>Multilayer perceptron</strong></a>, is a <strong>supervised learning algorithm</strong>. A supervised learning algorithm is one that tries to estimate a function H(x) (called <strong>hypothesis function</strong>) that correctly maps inputs to outputs (for instance, we are considering as input the images and as output the class associated to each image - cat or dog).</p>
+
+<p>So we need to supply the class name associated to each image (or, more precisely, to each histogram of visual words) in order to enable it to &ldquo;learn&rdquo; the pattern. However, a neural network doesn&rsquo;t understand categorical data. It works by showing numbers in the input layer and numbers in the output layer, and then it will try to adjust its weights in order that a function (called <strong>activation function</strong>) applied to the input numbers results in the output numbers. This process is shown in the image below.</p>
+
+<p style="text-align:center;"><img src="/images/posts/ann_3.gif" alt="" /></p>
+
+<p>Since the activation function generally outputs values between 0 and 1, it&rsquo;s usual to encode the classes as a sequence of zeros where only one bit is set to one. This bit is different for each class. For example, consider the example of number of classes = 4. We would then have four codifications:</p>
+
+<p>Class A = 1000<br>
+Class B = 0100<br>
+Class C = 0010<br>
+Class D = 0001<br></p>
+
+<p>As we only have two classes, our codification will be:</p>
+
+<p>Cat = 10<br>
+Dog = 01<br></p>
+
+<pre><code>int main()
+{
+    ...
+    // Filling matrixes to be used by the neural network
+    std::cout &lt;&lt; "Preparing neural network..." &lt;&lt; std::endl;
+    cv::Mat trainSamples;
+    cv::Mat trainResponses;
+    std::set&lt;ImageData*&gt; uniqueMetadata(descriptorsMetadata.begin(), descriptorsMetadata.end());
+    for (auto it = uniqueMetadata.begin(); it != uniqueMetadata.end(); )
+    {
+        ImageData* data = *it;
+        cv::Mat normalizedHist;
+        cv::normalize(data-&gt;bowFeatures, normalizedHist, 0, data-&gt;bowFeatures.rows, cv::NORM_MINMAX, -1, cv::Mat());
+        trainSamples.push_back(normalizedHist);
+        trainResponses.push_back(getClassCode(classes, data-&gt;classname));
+        delete *it; // clear memory
+        it++;
+    }
+    descriptorsMetadata.clear();
+}
+</code></pre>
+
+<p>Notice the use of the <code>getClassCode</code>. It&rsquo;s a function that turns a class name into its binary codification. Also, pay attention to the <code>cv::normalize</code> function. We normalize the histogram of visual words in order to remove the bias of number of descriptors.</p>
+
+<pre><code>/**
+ * Transform a class name into an id
+ */
+int getClassId(const std::set&lt;std::string&gt;&amp; classes, const std::string&amp; classname)
+{
+    int index = 0;
+    for (auto it = classes.begin(); it != classes.end(); ++it)
+    {
+        if (*it == classname) break;
+        ++index;
+    }
+    return index;
+}
+
+/**
+ * Get a binary code associated to a class
+ */
+cv::Mat getClassCode(const std::set&lt;std::string&gt;&amp; classes, const std::string&amp; classname)
+{
+    cv::Mat code = cv::Mat::zeros(cv::Size((int)classes.size(), 1), CV_32F);
+    int index = getClassId(classes, classname);
+    code.at&lt;float&gt;(index) = 1;
+    return code;
+}
+</code></pre>
+
+<p>And now we have the inputs and outputs for our neural network! We are finally able to train it!</p>
+
+<pre><code>/**
+ * Get a trained neural network according to some inputs and outputs
+ */
+cv::Ptr&lt;cv::ml::ANN_MLP&gt; getTrainedNeuralNetwork(const cv::Mat&amp; trainSamples, const cv::Mat&amp; trainResponses)
+{
+    int networkInputSize = trainSamples.cols;
+    int networkOutputSize = trainResponses.cols;
+    cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp = cv::ml::ANN_MLP::create();
+    std::vector&lt;int&gt; layerSizes = { networkInputSize, networkInputSize / 2,
+        networkOutputSize };
+    mlp-&gt;setLayerSizes(layerSizes);
+    mlp-&gt;setActivationFunction(cv::ml::ANN_MLP::SIGMOID_SYM);
+    mlp-&gt;train(trainSamples, cv::ml::ROW_SAMPLE, trainResponses);
+    return mlp;
+}
+
+int main()
+{
+    ...
+    // Training neural network
+    std::cout &lt;&lt; "Training neural network..." &lt;&lt; std::endl;
+    start = cv::getTickCount();
+    cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp = getTrainedNeuralNetwork(networkInputSize, 
+        trainSamples, trainResponses);
+    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+
+    // We can clear memory now 
+    trainSamples.release();
+    trainResponses.release();
+}
+</code></pre>
+
+<p>The <code>getTrainedNeuralNetwork</code> function expects to receive as input the size of training samples and training outputs. Inside the function, I first set two variables: <code>networkInputSize</code>, that is the number of columns (features) of our training samples and <code>networkOutputSize</code>, that is the number of columns of our training outputs. I then set <code>layerSizes</code>, that defines the number of layers and number of nodes for each layer of our network. For instance, I&rsquo;m creating a network that only have one hidden layer (with size <code>networkInputSize / 2</code>), since I think it&rsquo;ll be enough for our task. If you want improved accuracy, we can increase it, at cost of performance.</p>
+
+<h2>Evaluating our network</h2>
+
+<p>And now the training step is DONE! Let&rsquo;s use our trained neural network to evaluate our test samples and measure how good it is. First, let&rsquo;s train a FLANN model from the vocabulary, so we can calculate the histogram of visual words for each test sample much faster:</p>
+
+<pre><code>int main()
+{
+    ...
+
+    // Train FLANN 
+    std::cout &lt;&lt; "Training FLANN..." &lt;&lt; std::endl;
+    start = cv::getTickCount();
+    cv::FlannBasedMatcher flann;
+    flann.add(vocabulary);
+    flann.train();
+    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>Now let&rsquo;s read the test samples:</p>
+
+<pre><code>int main()
+{
+    ...
+    // Reading test set 
+    std::cout &lt;&lt; "Reading test set..." &lt;&lt; std::endl;
+    start = cv::getTickCount();
+    cv::Mat testSamples;
+    std::vector&lt;int&gt; testOutputExpected;
+    readImages(files.begin() + (size_t)(files.size() * trainSplitRatio), files.end(),
+        [&amp;](const std::string&amp; classname, const cv::Mat&amp; descriptors) {
+        // Get histogram of visual words using bag of words technique
+        cv::Mat bowFeatures = getBOWFeatures(flann, descriptors, networkInputSize);
+        cv::normalize(bowFeatures, bowFeatures, 0, bowFeatures.rows, cv::NORM_MINMAX, -1, cv::Mat());
+        testSamples.push_back(bowFeatures);
+        testOutputExpected.push_back(getClassId(classes, classname));
+    });
+    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>We instanciated two variables: <code>testSamples</code> (set of histogram of visual words for each test samples) and <code>testOutputExpected</code> (the output expected for each test sample. We are using a number that correspond to the id of the class, obtained through the <code>getClassId</code> previously defined). We then get the Bag of Words features through the <code>getBOWFeatures</code> function and normalize it. What we still didn&rsquo;t define is the <code>getBOWFeatures</code> function, that turns a set of local KAZE features into a histogram of visual words. Let&rsquo;s do it:</p>
+
+<pre><code>/**
+ * Turn local features into a single bag of words histogram of 
+ * of visual words (a.k.a., bag of words features)
+ */
+cv::Mat getBOWFeatures(cv::FlannBasedMatcher&amp; flann, const cv::Mat&amp; descriptors,
+    int vocabularySize)
+{
+    cv::Mat outputArray = cv::Mat::zeros(cv::Size(vocabularySize, 1), CV_32F);
+    std::vector&lt;cv::DMatch&gt; matches;
+    flann.match(descriptors, matches);
+    for (size_t j = 0; j &lt; matches.size(); j++)
+    {
+        int visualWord = matches[j].trainIdx;
+        outputArray.at&lt;float&gt;(visualWord)++;
+    }
+    return outputArray;
+}
+</code></pre>
+
+<p>It uses the FLANN <code>match</code> method to calculate the nearest visual word for each descriptor. It then fill a histogram with the number of occurrences for each visual word. Pretty simple, right?</p>
+
+<p>Now that we have the inputs and outputs for the test samples, let&rsquo;s calculate a <a href="https://en.wikipedia.org/wiki/Confusion_matrix"><strong>confusion matrix</strong></a>.</p>
+
+<pre><code>
+/**
+ * Receives a column matrix contained the probabilities associated to 
+ * each class and returns the id of column which contains the highest
+ * probability
+ */
+int getPredictedClass(const cv::Mat&amp; predictions)
+{
+    float maxPrediction = predictions.at&lt;float&gt;(0);
+    float maxPredictionIndex = 0;
+    const float* ptrPredictions = predictions.ptr&lt;float&gt;(0);
+    for (int i = 0; i &lt; predictions.cols; i++)
+    {
+        float prediction = *ptrPredictions++;
+        if (prediction &gt; maxPrediction)
+        {
+            maxPrediction = prediction;
+            maxPredictionIndex = i;
+        }
+    }
+    return maxPredictionIndex;
+}
+
+/**
+ * Get a confusion matrix from a set of test samples and their expected
+ * outputs
+ */
+std::vector&lt;std::vector&lt;int&gt; &gt; getConfusionMatrix(cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp, 
+    const cv::Mat&amp; testSamples, const std::vector&lt;int&gt;&amp; testOutputExpected)
+{
+    cv::Mat testOutput;
+    mlp-&gt;predict(testSamples, testOutput);
+    std::vector&lt;std::vector&lt;int&gt; &gt; confusionMatrix(2, std::vector&lt;int&gt;(2));
+    for (int i = 0; i &lt; testOutput.rows; i++)
+    {
+        int predictedClass = getPredictedClass(testOutput.row(i));
+        int expectedClass = testOutputExpected.at(i);
+        confusionMatrix[expectedClass][predictedClass]++;
+    }
+    return confusionMatrix;
+}
+
+/**
+ * Print a confusion matrix on screen
+ */
+void printConfusionMatrix(const std::vector&lt;std::vector&lt;int&gt; &gt;&amp; confusionMatrix,
+    const std::set&lt;std::string&gt;&amp; classes)
+{
+    for (auto it = classes.begin(); it != classes.end(); ++it)
+    {
+        std::cout &lt;&lt; *it &lt;&lt; " ";
+    }
+    std::cout &lt;&lt; std::endl;
+    for (size_t i = 0; i &lt; confusionMatrix.size(); i++)
+    {
+        for (size_t j = 0; j &lt; confusionMatrix[i].size(); j++)
+        {
+            std::cout &lt;&lt; confusionMatrix[i][j] &lt;&lt; " ";
+        }
+        std::cout &lt;&lt; std::endl;
+    }
+}
+
+/**
+ * Get the accuracy for a model (i.e., percentage of correctly predicted
+ * test samples)
+ */
+float getAccuracy(const std::vector&lt;std::vector&lt;int&gt; &gt;&amp; confusionMatrix)
+{
+    int hits = 0;
+    int total = 0;
+    for (size_t i = 0; i &lt; confusionMatrix.size(); i++)
+    {
+        for (size_t j = 0; j &lt; confusionMatrix.at(i).size(); j++)
+        {
+            if (i == j) hits += confusionMatrix.at(i).at(j);
+            total += confusionMatrix.at(i).at(j);
+        }
+    }
+    return hits / (float)total;
+}
+
+int main()
+{
+    ...
+    // Get confusion matrix of the test set
+    std::vector&lt;std::vector&lt;int&gt; &gt; confusionMatrix = getConfusionMatrix(mlp, 
+        testSamples, testOutputExpected);
+
+    // Get accuracy of our model
+    std::cout &lt;&lt; "Confusion matrix: " &lt;&lt; std::endl;
+    printConfusionMatrix(confusionMatrix, classes);
+    std::cout &lt;&lt; "Accuracy: " &lt;&lt; getAccuracy(confusionMatrix) &lt;&lt; std::endl;
+}
+</code></pre>
+
+<p>OK, a lot happened here. Let&rsquo;s check it step by step. First, in the <code>getConfusionMatrix</code>, I use the MLP <code>predict</code> method to predict the class for each test sample. It returns a matrix with the same number of columns as our number of classes, where on each column lies a &ldquo;probability&rdquo; of the sample belong to class corresponding to that column. We use than a function called <code>getPredictedClass</code>, which is called over each row of the output of <code>predict</code> method and return the column index with highest &ldquo;probability&rdquo;. Now that we have the predicted and expected classes, we can construct our confusion matrix by simplying incrementing the index composed by the tuple (expected, predicted).</p>
+
+<p>In possess of the confusion matrix, we can easily calculate the <strong>accuracy</strong>, that is the ratio of correctly predicted samples, by simplying summing the diagonal of our confusion matrix (number of correct predictions) and diving by the sum of our cells of our confusion matrix (number of test samples).</p>
+
+<p style="text-align:center;"> <img src="/images/posts/ann_4.png" alt="" /></p>
+
+<h2>Saving models</h2>
+
+<p>Finally, let&rsquo;s save our models, so we can use it later on a production environment:</p>
+
+<pre><code>/**
+ * Save our obtained models (neural network, bag of words vocabulary
+ * and class names) to use it later
+ */
+void saveModels(cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp, const cv::Mat&amp; vocabulary,
+    const std::set&lt;std::string&gt;&amp; classes)
+{
+    mlp-&gt;save("mlp.yaml");
+    cv::FileStorage fs("vocabulary.yaml", cv::FileStorage::WRITE);
+    fs &lt;&lt; "vocabulary" &lt;&lt; vocabulary;
+    fs.release();   
+    std::ofstream classesOutput("classes.txt");
+    for (auto it = classes.begin(); it != classes.end(); ++it)
+    {
+        classesOutput &lt;&lt; getClassId(classes, *it) &lt;&lt; "\t" &lt;&lt; *it &lt;&lt; std::endl; 
+    }
+    classesOutput.close();
+}
+
+int main()
+{
+    ...
+
+    // Save models
+    std::cout &lt;&lt; "Saving models..." &lt;&lt; std::endl;
+    saveModels(mlp, vocabulary, classes);
+
+    return 0;
+}
+</code></pre>
+
+<p>The MLP object that its own saving function called <code>save</code> (it also has a <code>load</code> method that can later be used to load a trained neural network from a file). We save the vocabulary (since we need it in order to convert the local features into a histogram of visual words) into a file named &ldquo;vocabulary.yaml&rdquo;. And, finally, we also save the class names associated to each id (so we can map the output of neural network to a name). That&rsquo;s it! The full code can be found below.</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<figure class='code'><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+<span class='line-number'>231</span>
+<span class='line-number'>232</span>
+<span class='line-number'>233</span>
+<span class='line-number'>234</span>
+<span class='line-number'>235</span>
+<span class='line-number'>236</span>
+<span class='line-number'>237</span>
+<span class='line-number'>238</span>
+<span class='line-number'>239</span>
+<span class='line-number'>240</span>
+<span class='line-number'>241</span>
+<span class='line-number'>242</span>
+<span class='line-number'>243</span>
+<span class='line-number'>244</span>
+<span class='line-number'>245</span>
+<span class='line-number'>246</span>
+<span class='line-number'>247</span>
+<span class='line-number'>248</span>
+<span class='line-number'>249</span>
+<span class='line-number'>250</span>
+<span class='line-number'>251</span>
+<span class='line-number'>252</span>
+<span class='line-number'>253</span>
+<span class='line-number'>254</span>
+<span class='line-number'>255</span>
+<span class='line-number'>256</span>
+<span class='line-number'>257</span>
+<span class='line-number'>258</span>
+<span class='line-number'>259</span>
+<span class='line-number'>260</span>
+<span class='line-number'>261</span>
+<span class='line-number'>262</span>
+<span class='line-number'>263</span>
+<span class='line-number'>264</span>
+<span class='line-number'>265</span>
+<span class='line-number'>266</span>
+<span class='line-number'>267</span>
+<span class='line-number'>268</span>
+<span class='line-number'>269</span>
+<span class='line-number'>270</span>
+<span class='line-number'>271</span>
+<span class='line-number'>272</span>
+<span class='line-number'>273</span>
+<span class='line-number'>274</span>
+<span class='line-number'>275</span>
+<span class='line-number'>276</span>
+<span class='line-number'>277</span>
+<span class='line-number'>278</span>
+<span class='line-number'>279</span>
+<span class='line-number'>280</span>
+<span class='line-number'>281</span>
+<span class='line-number'>282</span>
+<span class='line-number'>283</span>
+<span class='line-number'>284</span>
+<span class='line-number'>285</span>
+<span class='line-number'>286</span>
+<span class='line-number'>287</span>
+<span class='line-number'>288</span>
+<span class='line-number'>289</span>
+<span class='line-number'>290</span>
+<span class='line-number'>291</span>
+<span class='line-number'>292</span>
+<span class='line-number'>293</span>
+<span class='line-number'>294</span>
+<span class='line-number'>295</span>
+<span class='line-number'>296</span>
+<span class='line-number'>297</span>
+<span class='line-number'>298</span>
+<span class='line-number'>299</span>
+<span class='line-number'>300</span>
+<span class='line-number'>301</span>
+<span class='line-number'>302</span>
+<span class='line-number'>303</span>
+<span class='line-number'>304</span>
+<span class='line-number'>305</span>
+<span class='line-number'>306</span>
+<span class='line-number'>307</span>
+<span class='line-number'>308</span>
+<span class='line-number'>309</span>
+<span class='line-number'>310</span>
+<span class='line-number'>311</span>
+<span class='line-number'>312</span>
+<span class='line-number'>313</span>
+<span class='line-number'>314</span>
+<span class='line-number'>315</span>
+<span class='line-number'>316</span>
+<span class='line-number'>317</span>
+<span class='line-number'>318</span>
+<span class='line-number'>319</span>
+<span class='line-number'>320</span>
+<span class='line-number'>321</span>
+<span class='line-number'>322</span>
+<span class='line-number'>323</span>
+<span class='line-number'>324</span>
+<span class='line-number'>325</span>
+<span class='line-number'>326</span>
+<span class='line-number'>327</span>
+<span class='line-number'>328</span>
+<span class='line-number'>329</span>
+<span class='line-number'>330</span>
+<span class='line-number'>331</span>
+<span class='line-number'>332</span>
+<span class='line-number'>333</span>
+<span class='line-number'>334</span>
+<span class='line-number'>335</span>
+<span class='line-number'>336</span>
+<span class='line-number'>337</span>
+<span class='line-number'>338</span>
+<span class='line-number'>339</span>
+<span class='line-number'>340</span>
+<span class='line-number'>341</span>
+<span class='line-number'>342</span>
+<span class='line-number'>343</span>
+<span class='line-number'>344</span>
+<span class='line-number'>345</span>
+<span class='line-number'>346</span>
+<span class='line-number'>347</span>
+<span class='line-number'>348</span>
+<span class='line-number'>349</span>
+<span class='line-number'>350</span>
+<span class='line-number'>351</span>
+<span class='line-number'>352</span>
+<span class='line-number'>353</span>
+<span class='line-number'>354</span>
+<span class='line-number'>355</span>
+<span class='line-number'>356</span>
+<span class='line-number'>357</span>
+<span class='line-number'>358</span>
+<span class='line-number'>359</span>
+<span class='line-number'>360</span>
+<span class='line-number'>361</span>
+<span class='line-number'>362</span>
+<span class='line-number'>363</span>
+<span class='line-number'>364</span>
+<span class='line-number'>365</span>
+<span class='line-number'>366</span>
+<span class='line-number'>367</span>
+<span class='line-number'>368</span>
+<span class='line-number'>369</span>
+<span class='line-number'>370</span>
+</pre></td><td class='code'><pre><code class=''><span class='line'>#include &lt;vector&gt;
+</span><span class='line'>#include &lt;algorithm&gt;
+</span><span class='line'>#include &lt;functional&gt;
+</span><span class='line'>#include &lt;map&gt;
+</span><span class='line'>#include &lt;set&gt;
+</span><span class='line'>#include &lt;fstream&gt;
+</span><span class='line'>
+</span><span class='line'>#include &lt;opencv2/core/core.hpp&gt;
+</span><span class='line'>#include &lt;opencv2/highgui/highgui.hpp&gt;
+</span><span class='line'>#include &lt;opencv2/features2d/features2d.hpp&gt;
+</span><span class='line'>#include &lt;opencv2/ml/ml.hpp&gt;
+</span><span class='line'>
+</span><span class='line'>#include &lt;boost/filesystem.hpp&gt;
+</span><span class='line'>
+</span><span class='line'>namespace fs = boost::filesystem;
+</span><span class='line'>
+</span><span class='line'>typedef std::vector&lt;std::string&gt;::const_iterator vec_iter;
+</span><span class='line'>
+</span><span class='line'>struct ImageData 
+</span><span class='line'>{
+</span><span class='line'>    std::string classname;
+</span><span class='line'>    cv::Mat bowFeatures;
+</span><span class='line'>};
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Get all files in directory (not recursive)
+</span><span class='line'> * @param directory Directory where the files are contained
+</span><span class='line'> * @return A list containing the file name of all files inside given directory
+</span><span class='line'> **/
+</span><span class='line'>std::vector&lt;std::string&gt; getFilesInDirectory(const std::string& directory)
+</span><span class='line'>{
+</span><span class='line'>    std::vector&lt;std::string&gt; files;
+</span><span class='line'>    fs::path root(directory);
+</span><span class='line'>    fs::directory_iterator it_end;
+</span><span class='line'>    for (fs::directory_iterator it(root); it != it_end; ++it)
+</span><span class='line'>    {
+</span><span class='line'>        if (fs::is_regular_file(it-&gt;path()))
+</span><span class='line'>        {
+</span><span class='line'>            files.push_back(it-&gt;path().string());
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>    return files;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Extract the class name from a file name 
+</span><span class='line'> */
+</span><span class='line'>inline std::string getClassName(const std::string& filename)
+</span><span class='line'>{
+</span><span class='line'>    return filename.substr(filename.find_last_of('/') + 1, 3);
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Extract local features for an image
+</span><span class='line'> */
+</span><span class='line'>cv::Mat getDescriptors(const cv::Mat& img)
+</span><span class='line'>{
+</span><span class='line'>    cv::Ptr&lt;cv::KAZE&gt; kaze = cv::KAZE::create();
+</span><span class='line'>    std::vector&lt;cv::KeyPoint&gt; keypoints;
+</span><span class='line'>    cv::Mat descriptors;
+</span><span class='line'>    kaze-&gt;detectAndCompute(img, cv::noArray(), keypoints, descriptors);
+</span><span class='line'>    return descriptors;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Read images from a list of file names and returns, for each read image,
+</span><span class='line'> * its class name and its local descriptors
+</span><span class='line'> */
+</span><span class='line'>void readImages(vec_iter begin, vec_iter end, std::function&lt;void (const std::string&, const cv::Mat&)&gt; callback)
+</span><span class='line'>{
+</span><span class='line'>    for (auto it = begin; it != end; ++it)
+</span><span class='line'>    {
+</span><span class='line'>        std::string filename = *it;
+</span><span class='line'>        std::cout &lt;&lt; "Reading image " &lt;&lt; filename &lt;&lt; "..." &lt;&lt; std::endl;
+</span><span class='line'>        cv::Mat img = cv::imread(filename, 0);
+</span><span class='line'>        if (img.empty())
+</span><span class='line'>        {
+</span><span class='line'>            std::cerr &lt;&lt; "WARNING: Could not read image." &lt;&lt; std::endl;
+</span><span class='line'>            continue;
+</span><span class='line'>        }
+</span><span class='line'>        std::string classname = getClassName(filename);
+</span><span class='line'>        cv::Mat descriptors = getDescriptors(img);
+</span><span class='line'>        callback(classname, descriptors);
+</span><span class='line'>    }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Transform a class name into an id
+</span><span class='line'> */
+</span><span class='line'>int getClassId(const std::set&lt;std::string&gt;& classes, const std::string& classname)
+</span><span class='line'>{
+</span><span class='line'>    int index = 0;
+</span><span class='line'>    for (auto it = classes.begin(); it != classes.end(); ++it)
+</span><span class='line'>    {
+</span><span class='line'>        if (*it == classname) break;
+</span><span class='line'>        ++index;
+</span><span class='line'>    }
+</span><span class='line'>    return index;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Get a binary code associated to a class
+</span><span class='line'> */
+</span><span class='line'>cv::Mat getClassCode(const std::set&lt;std::string&gt;& classes, const std::string& classname)
+</span><span class='line'>{
+</span><span class='line'>    cv::Mat code = cv::Mat::zeros(cv::Size((int)classes.size(), 1), CV_32F);
+</span><span class='line'>    int index = getClassId(classes, classname);
+</span><span class='line'>    code.at&lt;float&gt;(index) = 1;
+</span><span class='line'>    return code;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Turn local features into a single bag of words histogram of 
+</span><span class='line'> * of visual words (a.k.a., bag of words features)
+</span><span class='line'> */
+</span><span class='line'>cv::Mat getBOWFeatures(cv::FlannBasedMatcher& flann, const cv::Mat& descriptors,
+</span><span class='line'>    int vocabularySize)
+</span><span class='line'>{
+</span><span class='line'>    cv::Mat outputArray = cv::Mat::zeros(cv::Size(vocabularySize, 1), CV_32F);
+</span><span class='line'>    std::vector&lt;cv::DMatch&gt; matches;
+</span><span class='line'>    flann.match(descriptors, matches);
+</span><span class='line'>    for (size_t j = 0; j &lt; matches.size(); j++)
+</span><span class='line'>    {
+</span><span class='line'>        int visualWord = matches[j].trainIdx;
+</span><span class='line'>        outputArray.at&lt;float&gt;(visualWord)++;
+</span><span class='line'>    }
+</span><span class='line'>    return outputArray;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Get a trained neural network according to some inputs and outputs
+</span><span class='line'> */
+</span><span class='line'>cv::Ptr&lt;cv::ml::ANN_MLP&gt; getTrainedNeuralNetwork(const cv::Mat& trainSamples, 
+</span><span class='line'>    const cv::Mat& trainResponses)
+</span><span class='line'>{
+</span><span class='line'>    int networkInputSize = trainSamples.cols;
+</span><span class='line'>    int networkOutputSize = trainResponses.cols;
+</span><span class='line'>    cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp = cv::ml::ANN_MLP::create();
+</span><span class='line'>    std::vector&lt;int&gt; layerSizes = { networkInputSize, networkInputSize / 2,
+</span><span class='line'>        networkOutputSize };
+</span><span class='line'>    mlp-&gt;setLayerSizes(layerSizes);
+</span><span class='line'>    mlp-&gt;setActivationFunction(cv::ml::ANN_MLP::SIGMOID_SYM);
+</span><span class='line'>    mlp-&gt;train(trainSamples, cv::ml::ROW_SAMPLE, trainResponses);
+</span><span class='line'>    return mlp;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Receives a column matrix contained the probabilities associated to 
+</span><span class='line'> * each class and returns the id of column which contains the highest
+</span><span class='line'> * probability
+</span><span class='line'> */
+</span><span class='line'>int getPredictedClass(const cv::Mat& predictions)
+</span><span class='line'>{
+</span><span class='line'>    float maxPrediction = predictions.at&lt;float&gt;(0);
+</span><span class='line'>    float maxPredictionIndex = 0;
+</span><span class='line'>    const float* ptrPredictions = predictions.ptr&lt;float&gt;(0);
+</span><span class='line'>    for (int i = 0; i &lt; predictions.cols; i++)
+</span><span class='line'>    {
+</span><span class='line'>        float prediction = *ptrPredictions++;
+</span><span class='line'>        if (prediction &gt; maxPrediction)
+</span><span class='line'>        {
+</span><span class='line'>            maxPrediction = prediction;
+</span><span class='line'>            maxPredictionIndex = i;
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>    return maxPredictionIndex;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Get a confusion matrix from a set of test samples and their expected
+</span><span class='line'> * outputs
+</span><span class='line'> */
+</span><span class='line'>std::vector&lt;std::vector&lt;int&gt; &gt; getConfusionMatrix(cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp, 
+</span><span class='line'>    const cv::Mat& testSamples, const std::vector&lt;int&gt;& testOutputExpected)
+</span><span class='line'>{
+</span><span class='line'>    cv::Mat testOutput;
+</span><span class='line'>    mlp-&gt;predict(testSamples, testOutput);
+</span><span class='line'>    std::vector&lt;std::vector&lt;int&gt; &gt; confusionMatrix(2, std::vector&lt;int&gt;(2));
+</span><span class='line'>    for (int i = 0; i &lt; testOutput.rows; i++)
+</span><span class='line'>    {
+</span><span class='line'>        int predictedClass = getPredictedClass(testOutput.row(i));
+</span><span class='line'>        int expectedClass = testOutputExpected.at(i);
+</span><span class='line'>        confusionMatrix[expectedClass][predictedClass]++;
+</span><span class='line'>    }
+</span><span class='line'>    return confusionMatrix;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Print a confusion matrix on screen
+</span><span class='line'> */
+</span><span class='line'>void printConfusionMatrix(const std::vector&lt;std::vector&lt;int&gt; &gt;& confusionMatrix,
+</span><span class='line'>    const std::set&lt;std::string&gt;& classes)
+</span><span class='line'>{
+</span><span class='line'>    for (auto it = classes.begin(); it != classes.end(); ++it)
+</span><span class='line'>    {
+</span><span class='line'>        std::cout &lt;&lt; *it &lt;&lt; " ";
+</span><span class='line'>    }
+</span><span class='line'>    std::cout &lt;&lt; std::endl;
+</span><span class='line'>    for (size_t i = 0; i &lt; confusionMatrix.size(); i++)
+</span><span class='line'>    {
+</span><span class='line'>        for (size_t j = 0; j &lt; confusionMatrix[i].size(); j++)
+</span><span class='line'>        {
+</span><span class='line'>            std::cout &lt;&lt; confusionMatrix[i][j] &lt;&lt; " ";
+</span><span class='line'>        }
+</span><span class='line'>        std::cout &lt;&lt; std::endl;
+</span><span class='line'>    }
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Get the accuracy for a model (i.e., percentage of correctly predicted
+</span><span class='line'> * test samples)
+</span><span class='line'> */
+</span><span class='line'>float getAccuracy(const std::vector&lt;std::vector&lt;int&gt; &gt;& confusionMatrix)
+</span><span class='line'>{
+</span><span class='line'>    int hits = 0;
+</span><span class='line'>    int total = 0;
+</span><span class='line'>    for (size_t i = 0; i &lt; confusionMatrix.size(); i++)
+</span><span class='line'>    {
+</span><span class='line'>        for (size_t j = 0; j &lt; confusionMatrix.at(i).size(); j++)
+</span><span class='line'>        {
+</span><span class='line'>            if (i == j) hits += confusionMatrix.at(i).at(j);
+</span><span class='line'>            total += confusionMatrix.at(i).at(j);
+</span><span class='line'>        }
+</span><span class='line'>    }
+</span><span class='line'>    return hits / (float)total;
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>/**
+</span><span class='line'> * Save our obtained models (neural network, bag of words vocabulary
+</span><span class='line'> * and class names) to use it later
+</span><span class='line'> */
+</span><span class='line'>void saveModels(cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp, const cv::Mat& vocabulary,
+</span><span class='line'>    const std::set&lt;std::string&gt;& classes)
+</span><span class='line'>{
+</span><span class='line'>    mlp-&gt;save("mlp.yaml");
+</span><span class='line'>    cv::FileStorage fs("vocabulary.yaml", cv::FileStorage::WRITE);
+</span><span class='line'>    fs &lt;&lt; "vocabulary" &lt;&lt; vocabulary;
+</span><span class='line'>    fs.release();   
+</span><span class='line'>    std::ofstream classesOutput("classes.txt");
+</span><span class='line'>    for (auto it = classes.begin(); it != classes.end(); ++it)
+</span><span class='line'>    {
+</span><span class='line'>        classesOutput &lt;&lt; getClassId(classes, *it) &lt;&lt; "\t" &lt;&lt; *it &lt;&lt; std::endl; 
+</span><span class='line'>    }
+</span><span class='line'>    classesOutput.close();
+</span><span class='line'>}
+</span><span class='line'>
+</span><span class='line'>int main(int argc, char** argv)
+</span><span class='line'>{
+</span><span class='line'>    if (argc != 4)
+</span><span class='line'>    {
+</span><span class='line'>        std::cerr &lt;&lt; "Usage: &lt;IMAGES_DIRECTORY&gt;  &lt;NETWORK_INPUT_LAYER_SIZE&gt; &lt;TRAIN_SPLIT_RATIO&gt;" &lt;&lt; std::endl;
+</span><span class='line'>        exit(-1);
+</span><span class='line'>    }
+</span><span class='line'>    std::string imagesDir = argv[1];
+</span><span class='line'>    int networkInputSize = atoi(argv[2]);
+</span><span class='line'>    float trainSplitRatio = atof(argv[3]);
+</span><span class='line'>    
+</span><span class='line'>    std::cout &lt;&lt; "Reading training set..." &lt;&lt; std::endl;
+</span><span class='line'>    double start = (double)cv::getTickCount();
+</span><span class='line'>    std::vector&lt;std::string&gt; files = getFilesInDirectory(imagesDir);
+</span><span class='line'>    std::random_shuffle(files.begin(), files.end());
+</span><span class='line'>    
+</span><span class='line'>    cv::Mat descriptorsSet;
+</span><span class='line'>    std::vector&lt;ImageData*&gt; descriptorsMetadata;
+</span><span class='line'>    std::set&lt;std::string&gt; classes;
+</span><span class='line'>    readImages(files.begin(), files.begin() + (size_t)(files.size() * trainSplitRatio), 
+</span><span class='line'>        [&](const std::string& classname, const cv::Mat& descriptors) {
+</span><span class='line'>        // Append to the set of classes
+</span><span class='line'>        classes.insert(classname);
+</span><span class='line'>        // Append to the list of descriptors
+</span><span class='line'>        descriptorsSet.push_back(descriptors);
+</span><span class='line'>        // Append metadata to each extracted feature
+</span><span class='line'>        ImageData* data = new ImageData;
+</span><span class='line'>        data-&gt;classname = classname;
+</span><span class='line'>        data-&gt;bowFeatures = cv::Mat::zeros(cv::Size(networkInputSize, 1), CV_32F);
+</span><span class='line'>        for (int j = 0; j &lt; descriptors.rows; j++)
+</span><span class='line'>        {
+</span><span class='line'>            descriptorsMetadata.push_back(data);
+</span><span class='line'>        }
+</span><span class='line'>    });
+</span><span class='line'>    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    std::cout &lt;&lt; "Creating vocabulary..." &lt;&lt; std::endl;
+</span><span class='line'>    start = (double)cv::getTickCount();
+</span><span class='line'>    cv::Mat labels;
+</span><span class='line'>    cv::Mat vocabulary;
+</span><span class='line'>    // Use k-means to find k centroids (the words of our vocabulary)
+</span><span class='line'>    cv::kmeans(descriptorsSet, networkInputSize, labels, cv::TermCriteria(cv::TermCriteria::EPS + 
+</span><span class='line'>        cv::TermCriteria::MAX_ITER, 10, 0.01), 1, cv::KMEANS_PP_CENTERS, vocabulary);
+</span><span class='line'>    // No need to keep it on memory anymore
+</span><span class='line'>    descriptorsSet.release();
+</span><span class='line'>    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    // Convert a set of local features for each image in a single descriptors
+</span><span class='line'>    // using the bag of words technique
+</span><span class='line'>    std::cout &lt;&lt; "Getting histograms of visual words..." &lt;&lt; std::endl;
+</span><span class='line'>    int* ptrLabels = (int*)(labels.data);
+</span><span class='line'>    int size = labels.rows * labels.cols;
+</span><span class='line'>    for (int i = 0; i &lt; size; i++)
+</span><span class='line'>    {
+</span><span class='line'>        int label = *ptrLabels++;
+</span><span class='line'>        ImageData* data = descriptorsMetadata[i];
+</span><span class='line'>        data-&gt;bowFeatures.at&lt;float&gt;(label)++;
+</span><span class='line'>    }
+</span><span class='line'>    
+</span><span class='line'>    // Filling matrixes to be used by the neural network
+</span><span class='line'>    std::cout &lt;&lt; "Preparing neural network..." &lt;&lt; std::endl;
+</span><span class='line'>    cv::Mat trainSamples;
+</span><span class='line'>    cv::Mat trainResponses;
+</span><span class='line'>    std::set&lt;ImageData*&gt; uniqueMetadata(descriptorsMetadata.begin(), descriptorsMetadata.end());
+</span><span class='line'>    for (auto it = uniqueMetadata.begin(); it != uniqueMetadata.end(); )
+</span><span class='line'>    {
+</span><span class='line'>        ImageData* data = *it;
+</span><span class='line'>        cv::Mat normalizedHist;
+</span><span class='line'>        cv::normalize(data-&gt;bowFeatures, normalizedHist, 0, data-&gt;bowFeatures.rows, cv::NORM_MINMAX, -1, cv::Mat());
+</span><span class='line'>        trainSamples.push_back(normalizedHist);
+</span><span class='line'>        trainResponses.push_back(getClassCode(classes, data-&gt;classname));
+</span><span class='line'>        delete *it; // clear memory
+</span><span class='line'>        it++;
+</span><span class='line'>    }
+</span><span class='line'>    descriptorsMetadata.clear();
+</span><span class='line'>    
+</span><span class='line'>    // Training neural network
+</span><span class='line'>    std::cout &lt;&lt; "Training neural network..." &lt;&lt; std::endl;
+</span><span class='line'>    start = cv::getTickCount();
+</span><span class='line'>    cv::Ptr&lt;cv::ml::ANN_MLP&gt; mlp = getTrainedNeuralNetwork(trainSamples, trainResponses);
+</span><span class='line'>    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    // We can clear memory now 
+</span><span class='line'>    trainSamples.release();
+</span><span class='line'>    trainResponses.release();
+</span><span class='line'>    
+</span><span class='line'>    // Train FLANN 
+</span><span class='line'>    std::cout &lt;&lt; "Training FLANN..." &lt;&lt; std::endl;
+</span><span class='line'>    start = cv::getTickCount();
+</span><span class='line'>    cv::FlannBasedMatcher flann;
+</span><span class='line'>    flann.add(vocabulary);
+</span><span class='line'>    flann.train();
+</span><span class='line'>    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    // Reading test set 
+</span><span class='line'>    std::cout &lt;&lt; "Reading test set..." &lt;&lt; std::endl;
+</span><span class='line'>    start = cv::getTickCount();
+</span><span class='line'>    cv::Mat testSamples;
+</span><span class='line'>    std::vector&lt;int&gt; testOutputExpected;
+</span><span class='line'>    readImages(files.begin() + (size_t)(files.size() * trainSplitRatio), files.end(),
+</span><span class='line'>        [&](const std::string& classname, const cv::Mat& descriptors) {
+</span><span class='line'>        // Get histogram of visual words using bag of words technique
+</span><span class='line'>        cv::Mat bowFeatures = getBOWFeatures(flann, descriptors, networkInputSize);
+</span><span class='line'>        cv::normalize(bowFeatures, bowFeatures, 0, bowFeatures.rows, cv::NORM_MINMAX, -1, cv::Mat());
+</span><span class='line'>        testSamples.push_back(bowFeatures);
+</span><span class='line'>        testOutputExpected.push_back(getClassId(classes, classname));
+</span><span class='line'>    });
+</span><span class='line'>    std::cout &lt;&lt; "Time elapsed in minutes: " &lt;&lt; ((double)cv::getTickCount() - start) / cv::getTickFrequency() / 60.0 &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    // Get confusion matrix of the test set
+</span><span class='line'>    std::vector&lt;std::vector&lt;int&gt; &gt; confusionMatrix = getConfusionMatrix(mlp, 
+</span><span class='line'>        testSamples, testOutputExpected);
+</span><span class='line'>    
+</span><span class='line'>    // Get accuracy of our model
+</span><span class='line'>    std::cout &lt;&lt; "Confusion matrix: " &lt;&lt; std::endl;
+</span><span class='line'>    printConfusionMatrix(confusionMatrix, classes);
+</span><span class='line'>    std::cout &lt;&lt; "Accuracy: " &lt;&lt; getAccuracy(confusionMatrix) &lt;&lt; std::endl;
+</span><span class='line'>    
+</span><span class='line'>    // Save models
+</span><span class='line'>    std::cout &lt;&lt; "Saving models..." &lt;&lt; std::endl;
+</span><span class='line'>    saveModels(mlp, vocabulary, classes);
+</span><span class='line'>    
+</span><span class='line'>    return 0;
+</span><span class='line'>}</span></code></pre></td></tr></table></div></figure>
+</div>
+
+
+<p>Compile it by calling:
+<code>Bash
+g++ opencv_ann.cpp -std=c++0x  -I/usr/local/include/opencv -I/usr/local/include/boost -I/usr/local/include -L/usr/local/lib -lopencv_shape -lopencv_stitching -lopencv_objdetect -lopencv_superres -lopencv_videostab -lopencv_calib3d -lopencv_features2d -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_photo -lopencv_ml -lopencv_imgproc -lopencv_flann -lopencv_core -lopencv_hal -lboost_filesystem -lboost_system -o mlp
+</code></p>
+
+<p>For instance, here&rsquo;s the result I got from the Kaggle&rsquo;s training set (using networkInputSize = 512, trainSplitRatio = 0.7)
+<code>C++
+Confusion matrix:
+cat dog
+2669 1097
+1053 2681
+Accuracy: 0.713333
+</code>
+Not bad! Not bad at all, considering the difficulty of some images! ;)</p>
+
+<p style="text-align:center;"><img src="/images/posts/ann_dog.jpg" alt="" /> <img src="/images/posts/ann_cat.jpg" alt="" /></p>
+
+<p>If you are interested in knowing how the server used to present the live demo in the beginning of this tutorial looks like, you can take a look at the source code below.</p>
+
+<center><input id="spoiler2" type="button" value="See source code" onclick="toggle_visibility('code2');"></center>
+
+
+<div id="code2">
+<figure class='code'><figcaption><span>demo.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+<span class='line-number'>231</span>
+<span class='line-number'>232</span>
+<span class='line-number'>233</span>
+<span class='line-number'>234</span>
+<span class='line-number'>235</span>
+<span class='line-number'>236</span>
+<span class='line-number'>237</span>
+<span class='line-number'>238</span>
+<span class='line-number'>239</span>
+<span class='line-number'>240</span>
+<span class='line-number'>241</span>
+<span class='line-number'>242</span>
+<span class='line-number'>243</span>
+<span class='line-number'>244</span>
+<span class='line-number'>245</span>
+<span class='line-number'>246</span>
+<span class='line-number'>247</span>
+<span class='line-number'>248</span>
+<span class='line-number'>249</span>
+<span class='line-number'>250</span>
+<span class='line-number'>251</span>
+<span class='line-number'>252</span>
+<span class='line-number'>253</span>
+<span class='line-number'>254</span>
+<span class='line-number'>255</span>
+<span class='line-number'>256</span>
+<span class='line-number'>257</span>
+<span class='line-number'>258</span>
+<span class='line-number'>259</span>
+<span class='line-number'>260</span>
+<span class='line-number'>261</span>
+<span class='line-number'>262</span>
+<span class='line-number'>263</span>
+<span class='line-number'>264</span>
+<span class='line-number'>265</span>
+<span class='line-number'>266</span>
+<span class='line-number'>267</span>
+<span class='line-number'>268</span>
+<span class='line-number'>269</span>
+<span class='line-number'>270</span>
+<span class='line-number'>271</span>
+<span class='line-number'>272</span>
+<span class='line-number'>273</span>
+<span class='line-number'>274</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="cp">#include &lt;vector&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;set&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;sstream&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;fstream&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;cstdlib&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;algorithm&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;boost/bind.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;boost/asio.hpp&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;opencv2/core/core.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/highgui/highgui.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/features2d/features2d.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/ml/ml.hpp&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">using</span> <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">ip</span><span class="o">::</span><span class="n">tcp</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">struct</span> <span class="n">Context</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">vocabulary</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">FlannBasedMatcher</span> <span class="n">flann</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">classes</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Ptr</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">ml</span><span class="o">::</span><span class="n">ANN_MLP</span><span class="o">&gt;</span> <span class="n">mlp</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Extract local features for an image</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">getDescriptors</span><span class="p">(</span><span class="k">const</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">&amp;</span> <span class="n">img</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Ptr</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">KAZE</span><span class="o">&gt;</span> <span class="n">kaze</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">KAZE</span><span class="o">::</span><span class="n">create</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">KeyPoint</span><span class="o">&gt;</span> <span class="n">keypoints</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">descriptors</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">kaze</span><span class="o">-&gt;</span><span class="n">detectAndCompute</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">noArray</span><span class="p">(),</span> <span class="n">keypoints</span><span class="p">,</span> <span class="n">descriptors</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">descriptors</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Get a histogram of visual words for an image</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">getBOWFeatures</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">FlannBasedMatcher</span><span class="o">&amp;</span> <span class="n">flann</span><span class="p">,</span> <span class="k">const</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">&amp;</span> <span class="n">img</span><span class="p">,</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">vocabularySize</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">descriptors</span> <span class="o">=</span> <span class="n">getDescriptors</span><span class="p">(</span><span class="n">img</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">outputArray</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="n">vocabularySize</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">CV_32F</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">DMatch</span><span class="o">&gt;</span> <span class="n">matches</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">flann</span><span class="p">.</span><span class="n">match</span><span class="p">(</span><span class="n">descriptors</span><span class="p">,</span> <span class="n">matches</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">matches</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">j</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">visualWord</span> <span class="o">=</span> <span class="n">matches</span><span class="p">[</span><span class="n">j</span><span class="p">].</span><span class="n">trainIdx</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">outputArray</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">visualWord</span><span class="p">)</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">outputArray</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Receives a column matrix contained the probabilities associated to </span>
+</span><span class='line'><span class="cm"> * each class and returns the id of column which contains the highest</span>
+</span><span class='line'><span class="cm"> * probability</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">getPredictedClass</span><span class="p">(</span><span class="k">const</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">&amp;</span> <span class="n">predictions</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">maxPrediction</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="kt">float</span> <span class="n">maxPredictionIndex</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">const</span> <span class="kt">float</span><span class="o">*</span> <span class="n">ptrPredictions</span> <span class="o">=</span> <span class="n">predictions</span><span class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">predictions</span><span class="p">.</span><span class="n">cols</span><span class="p">;</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="kt">float</span> <span class="n">prediction</span> <span class="o">=</span> <span class="o">*</span><span class="n">ptrPredictions</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="n">prediction</span> <span class="o">&gt;</span> <span class="n">maxPrediction</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">maxPrediction</span> <span class="o">=</span> <span class="n">prediction</span><span class="p">;</span>
+</span><span class='line'>            <span class="n">maxPredictionIndex</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">return</span> <span class="n">maxPredictionIndex</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="cm">/**</span>
+</span><span class='line'><span class="cm"> * Get the predicted class for a sample</span>
+</span><span class='line'><span class="cm"> */</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">getClass</span><span class="p">(</span><span class="k">const</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="o">&amp;</span> <span class="n">bowFeatures</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Ptr</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">ml</span><span class="o">::</span><span class="n">ANN_MLP</span><span class="o">&gt;</span> <span class="n">mlp</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">output</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">mlp</span><span class="o">-&gt;</span><span class="n">predict</span><span class="p">(</span><span class="n">bowFeatures</span><span class="p">,</span> <span class="n">output</span><span class="p">);</span>
+</span><span class='line'>    <span class="k">return</span> <span class="nf">getPredictedClass</span><span class="p">(</span><span class="n">output</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">session</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="k">public</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">session</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span><span class="o">&amp;</span> <span class="n">io_service</span><span class="p">,</span> <span class="n">Context</span><span class="o">*</span> <span class="n">context</span><span class="p">)</span>
+</span><span class='line'>    <span class="o">:</span> <span class="n">socket_</span><span class="p">(</span><span class="n">io_service</span><span class="p">),</span> <span class="n">context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">tcp</span><span class="o">::</span><span class="n">socket</span><span class="o">&amp;</span> <span class="n">socket</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">socket_</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="n">start</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">socket_</span><span class="p">.</span><span class="n">async_read_some</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">buffer</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">max_length</span><span class="p">),</span>
+</span><span class='line'>            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session</span><span class="o">::</span><span class="n">handle_read</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">error</span><span class="p">,</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">bytes_transferred</span><span class="p">));</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">Context</span><span class="o">*</span> <span class="n">context</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">tcp</span><span class="o">::</span><span class="n">socket</span> <span class="n">socket_</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">enum</span> <span class="p">{</span> <span class="n">max_length</span> <span class="o">=</span> <span class="mi">1024</span> <span class="p">};</span>
+</span><span class='line'>    <span class="kt">char</span> <span class="n">data_</span><span class="p">[</span><span class="n">max_length</span><span class="p">];</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">handle_read</span><span class="p">(</span><span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span><span class="o">&amp;</span> <span class="n">error</span><span class="p">,</span>
+</span><span class='line'>      <span class="kt">size_t</span> <span class="n">bytes_transferred</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">result</span><span class="p">;</span>
+</span><span class='line'>            <span class="c1">// Reading image</span>
+</span><span class='line'>            <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">filename</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">find</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">data_</span> <span class="o">+</span> <span class="n">bytes_transferred</span><span class="p">,</span> <span class="sc">&#39;\n&#39;</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>            <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">img</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">imread</span><span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>            <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">img</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+</span><span class='line'>            <span class="p">{</span>
+</span><span class='line'>                <span class="c1">// Processing image</span>
+</span><span class='line'>                <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">bowFeatures</span> <span class="o">=</span> <span class="n">getBOWFeatures</span><span class="p">(</span><span class="n">context</span><span class="o">-&gt;</span><span class="n">flann</span><span class="p">,</span> <span class="n">img</span><span class="p">,</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">vocabulary</span><span class="p">.</span><span class="n">rows</span><span class="p">);</span>
+</span><span class='line'>                <span class="n">cv</span><span class="o">::</span><span class="n">normalize</span><span class="p">(</span><span class="n">bowFeatures</span><span class="p">,</span> <span class="n">bowFeatures</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">bowFeatures</span><span class="p">.</span><span class="n">rows</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">NORM_MINMAX</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">());</span>
+</span><span class='line'>                <span class="kt">int</span> <span class="n">predictedClass</span> <span class="o">=</span> <span class="n">getClass</span><span class="p">(</span><span class="n">bowFeatures</span><span class="p">,</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">mlp</span><span class="p">);</span>
+</span><span class='line'>                <span class="n">result</span> <span class="o">=</span> <span class="n">context</span><span class="o">-&gt;</span><span class="n">classes</span><span class="p">[</span><span class="n">predictedClass</span><span class="p">];</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>            <span class="k">else</span>
+</span><span class='line'>            <span class="p">{</span>
+</span><span class='line'>                <span class="n">result</span> <span class="o">=</span> <span class="s">&quot;error&quot;</span><span class="p">;</span>
+</span><span class='line'>            <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">data_</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="k">sizeof</span><span class="p">(</span><span class="n">data_</span><span class="p">));</span>
+</span><span class='line'>            <span class="n">strcpy</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">result</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
+</span><span class='line'>            <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">async_write</span><span class="p">(</span><span class="n">socket_</span><span class="p">,</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">buffer</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">bytes_transferred</span><span class="p">),</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session</span><span class="o">::</span><span class="n">handle_write</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">error</span><span class="p">));</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">else</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="k">delete</span> <span class="k">this</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">handle_write</span><span class="p">(</span><span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span><span class="o">&amp;</span> <span class="n">error</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="n">socket_</span><span class="p">.</span><span class="n">async_read_some</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">buffer</span><span class="p">(</span><span class="n">data_</span><span class="p">,</span> <span class="n">max_length</span><span class="p">),</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">session</span><span class="o">::</span><span class="n">handle_read</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">error</span><span class="p">,</span>
+</span><span class='line'>                <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">bytes_transferred</span><span class="p">));</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">else</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>            <span class="k">delete</span> <span class="k">this</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">class</span> <span class="nc">server</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'><span class="k">public</span><span class="o">:</span>
+</span><span class='line'>  <span class="n">server</span><span class="p">(</span><span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span><span class="o">&amp;</span> <span class="n">io_service</span><span class="p">,</span> <span class="kt">short</span> <span class="n">port</span><span class="p">,</span> <span class="n">Context</span><span class="o">*</span> <span class="n">context</span><span class="p">)</span>
+</span><span class='line'>    <span class="o">:</span> <span class="n">io_service_</span><span class="p">(</span><span class="n">io_service</span><span class="p">),</span>
+</span><span class='line'>      <span class="n">acceptor_</span><span class="p">(</span><span class="n">io_service</span><span class="p">,</span> <span class="n">tcp</span><span class="o">::</span><span class="n">endpoint</span><span class="p">(</span><span class="n">tcp</span><span class="o">::</span><span class="n">v4</span><span class="p">(),</span> <span class="n">port</span><span class="p">)),</span>
+</span><span class='line'>      <span class="n">context</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>    <span class="n">start_accept</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="k">private</span><span class="o">:</span>
+</span><span class='line'>    <span class="n">Context</span><span class="o">*</span> <span class="n">context</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span><span class="o">&amp;</span> <span class="n">io_service_</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">tcp</span><span class="o">::</span><span class="n">acceptor</span> <span class="n">acceptor_</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">start_accept</span><span class="p">()</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">session</span><span class="o">*</span> <span class="n">new_session</span> <span class="o">=</span> <span class="k">new</span> <span class="n">session</span><span class="p">(</span><span class="n">io_service_</span><span class="p">,</span> <span class="n">context</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">acceptor_</span><span class="p">.</span><span class="n">async_accept</span><span class="p">(</span><span class="n">new_session</span><span class="o">-&gt;</span><span class="n">socket</span><span class="p">(),</span>
+</span><span class='line'>            <span class="n">boost</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">server</span><span class="o">::</span><span class="n">handle_accept</span><span class="p">,</span> <span class="k">this</span><span class="p">,</span> <span class="n">new_session</span><span class="p">,</span>
+</span><span class='line'>              <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="n">error</span><span class="p">));</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kt">void</span> <span class="nf">handle_accept</span><span class="p">(</span><span class="n">session</span><span class="o">*</span> <span class="n">new_session</span><span class="p">,</span>
+</span><span class='line'>      <span class="k">const</span> <span class="n">boost</span><span class="o">::</span><span class="n">system</span><span class="o">::</span><span class="n">error_code</span><span class="o">&amp;</span> <span class="n">error</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">error</span><span class="p">)</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>          <span class="n">new_session</span><span class="o">-&gt;</span><span class="n">start</span><span class="p">();</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>        <span class="k">else</span>
+</span><span class='line'>        <span class="p">{</span>
+</span><span class='line'>          <span class="k">delete</span> <span class="n">new_session</span><span class="p">;</span>
+</span><span class='line'>        <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="n">start_accept</span><span class="p">();</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">(</span><span class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span class="kt">char</span><span class="o">**</span> <span class="n">argv</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>    <span class="k">if</span> <span class="p">(</span><span class="n">argc</span> <span class="o">!=</span> <span class="mi">5</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Usage: &lt;NEURAL_NETWORK_INPUT_FILENAME&gt; &lt;VOCABULARY_INPUT_FILENAME&gt; &lt;CLASSES_INPUT_FILENAME&gt; &lt;PORT_NUMBER&gt;&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">exit</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">neuralNetworkInputFilename</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]);</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">vocabularyInputFilename</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">]);</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">classesInputFilename</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">3</span><span class="p">]);</span>
+</span><span class='line'>    <span class="kt">int</span> <span class="n">portNumber</span> <span class="o">=</span> <span class="n">atoi</span><span class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">4</span><span class="p">]);</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Loading models...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="kt">double</span> <span class="n">start</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getTickCount</span><span class="p">();</span>
+</span><span class='line'>    <span class="c1">// Reading neural network</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Ptr</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">ml</span><span class="o">::</span><span class="n">ANN_MLP</span><span class="o">&gt;</span> <span class="n">mlp</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">ml</span><span class="o">::</span><span class="n">ANN_MLP</span><span class="o">::</span><span class="n">load</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">ml</span><span class="o">::</span><span class="n">ANN_MLP</span><span class="o">&gt;</span><span class="p">(</span><span class="n">neuralNetworkInputFilename</span><span class="p">);</span>
+</span><span class='line'>    <span class="c1">// Read vocabulary</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">vocabulary</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">FileStorage</span> <span class="n">fs</span><span class="p">(</span><span class="n">vocabularyInputFilename</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">FileStorage</span><span class="o">::</span><span class="n">READ</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">fs</span><span class="p">[</span><span class="s">&quot;vocabulary&quot;</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">vocabulary</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">fs</span><span class="p">.</span><span class="n">release</span><span class="p">();</span>
+</span><span class='line'>    <span class="c1">// Reading existing classes</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">map</span><span class="o">&lt;</span><span class="kt">int</span><span class="p">,</span> <span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">classes</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">ifstream</span> <span class="n">classesInput</span><span class="p">(</span><span class="n">classesInputFilename</span><span class="p">.</span><span class="n">c_str</span><span class="p">());</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">line</span><span class="p">;</span>
+</span><span class='line'>    <span class="k">while</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">getline</span><span class="p">(</span><span class="n">classesInput</span><span class="p">,</span> <span class="n">line</span><span class="p">))</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">stringstream</span> <span class="n">ss</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">ss</span> <span class="o">&lt;&lt;</span> <span class="n">line</span><span class="p">;</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">index</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">classname</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">ss</span> <span class="o">&gt;&gt;</span> <span class="n">index</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">ss</span> <span class="o">&gt;&gt;</span> <span class="n">classname</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">classes</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="o">=</span> <span class="n">classname</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Time elapsed in seconds: &quot;</span> <span class="o">&lt;&lt;</span> <span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">cv</span><span class="o">::</span><span class="n">getTickCount</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">cv</span><span class="o">::</span><span class="n">getTickFrequency</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Train FLANN </span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Training FLANN...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">start</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getTickCount</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">cv</span><span class="o">::</span><span class="n">FlannBasedMatcher</span> <span class="n">flann</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">flann</span><span class="p">.</span><span class="n">add</span><span class="p">(</span><span class="n">vocabulary</span><span class="p">);</span>
+</span><span class='line'>    <span class="n">flann</span><span class="p">.</span><span class="n">train</span><span class="p">();</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Time elapsed in seconds: &quot;</span> <span class="o">&lt;&lt;</span> <span class="p">((</span><span class="kt">double</span><span class="p">)</span><span class="n">cv</span><span class="o">::</span><span class="n">getTickCount</span><span class="p">()</span> <span class="o">-</span> <span class="n">start</span><span class="p">)</span> <span class="o">/</span> <span class="n">cv</span><span class="o">::</span><span class="n">getTickFrequency</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="c1">// Socket initialization</span>
+</span><span class='line'>    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Listening to socket on port &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">portNumber</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;...&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>    <span class="n">try</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">boost</span><span class="o">::</span><span class="n">asio</span><span class="o">::</span><span class="n">io_service</span> <span class="n">io_service</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">Context</span><span class="o">*</span> <span class="n">context</span> <span class="o">=</span> <span class="k">new</span> <span class="n">Context</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">context</span><span class="o">-&gt;</span><span class="n">vocabulary</span> <span class="o">=</span> <span class="n">vocabulary</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">context</span><span class="o">-&gt;</span><span class="n">flann</span> <span class="o">=</span> <span class="n">flann</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">context</span><span class="o">-&gt;</span><span class="n">classes</span> <span class="o">=</span> <span class="n">classes</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">context</span><span class="o">-&gt;</span><span class="n">mlp</span> <span class="o">=</span> <span class="n">mlp</span><span class="p">;</span>
+</span><span class='line'>        <span class="n">server</span> <span class="n">s</span><span class="p">(</span><span class="n">io_service</span><span class="p">,</span> <span class="n">portNumber</span><span class="p">,</span> <span class="n">context</span><span class="p">);</span>
+</span><span class='line'>        <span class="n">io_service</span><span class="p">.</span><span class="n">run</span><span class="p">();</span>
+</span><span class='line'>        <span class="k">delete</span> <span class="n">context</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>    <span class="k">catch</span> <span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">exception</span><span class="o">&amp;</span> <span class="n">e</span><span class="p">)</span>
+</span><span class='line'>    <span class="p">{</span>
+</span><span class='line'>        <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Exception: &quot;</span> <span class="o">&lt;&lt;</span> <span class="n">e</span><span class="p">.</span><span class="n">what</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>    <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+</div>
+
+
+<script>
+$(function() {
+    $("#code2").hide();
+});
+</script>
+
+]]></content>
+  </entry>
+  
+</feed>

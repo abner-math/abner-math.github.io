@@ -1,0 +1,793 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>(Python 2.7) PySnake - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">(Python 2.7) PySnake</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-17T22:26:50-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:26 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, like this one below:</p>
+
+<p style="text-align:center;"><img src="/images/posts/pysnake.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>You can get the source code below. Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/300f93a9820c52e6a243.js?file=PySnake.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PySnake v2.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import os, platform, time, sys, select
+from random import randint
+ 
+&quot;&quot;&quot;
+Enumerate the directions that a snake can take
+&quot;&quot;&quot;
+class Direction:
+    forward = 1
+    backward = 2
+    upward = 3
+    downward = 4
+ 
+&quot;&quot;&quot;
+Control the movement and position of a snake
+&quot;&quot;&quot;
+class Snake:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Turn the snake of direction
+    &quot;&quot;&quot;
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Move the snake toward its direction
+    Return false if the movement crossed the wall
+    &quot;&quot;&quot;
+    def move(self):
+        if self.direction == Direction.forward:
+            self.x += 1
+            if self.x &gt;= self.width:
+                self.x = 0
+                return False
+        elif self.direction == Direction.backward:
+            self.x -= 1
+            if self.x &lt; 0:
+                self.x = self.width - 1
+                return False
+        elif self.direction == Direction.upward:
+            self.y -= 1
+            if self.y &lt; 0:
+                self.y = self.height - 1
+                return False
+        elif self.direction == Direction.downward:
+            self.y += 1
+            if self.y &gt;= self.height:
+                self.y = 0 
+                return False
+        return True
+    &quot;&quot;&quot;
+    Change snake&#39;s direction and move it at the same time
+    &quot;&quot;&quot;
+    def turn_and_move(self, direction):
+        self.turn(direction)
+        return self.move() 
+ 
+&quot;&quot;&quot;
+Keep information of a terrain object (fruit or obstacles)
+&quot;&quot;&quot;
+class TerrainObject:
+    &quot;&quot;&quot;
+    Verify if given position if empty
+    &quot;&quot;&quot;
+    def __is_empty(self, x, y, context):
+        try:
+            for snake in context.snakes:
+                if snake.x == x and snake.y == y: return False
+            for obstacle in context.obstacles:
+                if obstacle.x == x and obstacle.y == y: return False
+            if context.fruit.x == x and context.fruit.y == y: return False
+        except AttributeError: pass
+        return True
+    &quot;&quot;&quot;
+    Build a object in a random place of the terrain
+    &quot;&quot;&quot;
+    def __init__(self, context):
+        while True:
+            x = randint(0, context.width - 1)
+            y = randint(0, context.height - 1)
+            if self.__is_empty(x, y, context): break
+        self.x = x
+        self.y = y
+    &quot;&quot;&quot;
+    Verify if the snake&#39;s head hit that object
+    &quot;&quot;&quot;
+    def hit(self, snake):
+        return self.x == snake.x and self.y == snake.y
+ 
+&quot;&quot;&quot;
+Keep information of the terrain
+&quot;&quot;&quot;
+class Terrain:
+    __WHITE_SPACE = &#39; &#39;
+    __SNAKE_BODY = &#39;0&#39;
+    __FRUIT = &#39;*&#39;
+    __OBSTACLE = &quot;~&quot;
+    __HOR_BOUND = &quot;-&quot;
+    __VER_BOUND = &quot;|&quot;
+    &quot;&quot;&quot;
+    Create a terrain of given width and height
+    &quot;&quot;&quot;
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Update terrain information using passed objects
+    &quot;&quot;&quot;
+    def __update(self, snakes, fruit, obstacles):
+        self.matrix = [] 
+        for i in range(self.height):
+            self.matrix.append([])
+            for j in range(self.width):
+                self.matrix[i].append(Terrain.__WHITE_SPACE)
+        self.matrix[fruit.y][fruit.x] = Terrain.__FRUIT
+        for snake in snakes:
+            self.matrix[snake.y][snake.x] = Terrain.__SNAKE_BODY
+        for obstacle in obstacles:
+            self.matrix[obstacle.y][obstacle.x] = Terrain.__OBSTACLE
+    &quot;&quot;&quot;
+    Return a string that shows a visual representation of the terrain
+    &quot;&quot;&quot;
+    def show(self, snakes, fruit, obstacles):
+        self.__update(snakes, fruit, obstacles)  
+        horizontal_bound = &quot;.&quot; + Terrain.__HOR_BOUND * (self.width) + &quot;.&quot; + &quot;\n&quot;
+        result = horizontal_bound
+        for line in self.matrix:
+            result += Terrain.__VER_BOUND + &quot;&quot;.join(line) + Terrain.__VER_BOUND + &quot;\n&quot;
+        result += horizontal_bound
+        return result
+ 
+&quot;&quot;&quot;
+Responsible to show elements in the screen
+&quot;&quot;&quot;
+class View:
+    LOGO = &quot;&quot;&quot;
+██████╗ ██╗   ██╗███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗
+██╔══██╗╚██╗ ██╔╝██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝
+██████╔╝ ╚████╔╝ ███████╗██╔██╗ ██║███████║█████╔╝ █████╗  
+██╔═══╝   ╚██╔╝  ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  
+██║        ██║   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗
+╚═╝        ╚═╝   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+&quot;&quot;&quot;
+    INITIAL = LOGO + &quot;&quot;&quot;
+ 
+GAME CONTROLS:
+=============================================================
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39; OR &#39;W&#39; KEYS TO MOVE THE SNAKE.
+ESC TO EXIT GAME.
+=============================================================
+ 
+CREATED BY: 
+-------------------------------------------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+    DIFFICULTY = LOGO + &quot;&quot;&quot;
+ 
+CHOOSE A DIFFICULTY BELOW:
+=============================================================
+1. VERY EASY
+2. MEDIUM
+3. HARD
+=============================================================
+ 
+OBJECTS:
+-------------------------------------------------------------
+* Fruit
+~ Obstacle
+&quot;&quot;&quot;
+    GAME_OVER = &quot;&quot;&quot;
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄  
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
+                                                     ░                   
+PRESS &#39;N&#39; TO START A NEW GAME.
+&quot;&quot;&quot;
+    def __init__(self, context):
+        self.context = context
+        self.terrain = Terrain(self.context.width, self.context.height)
+    &quot;&quot;&quot;
+    Render terrain and game information in the screen
+    &quot;&quot;&quot;
+    def render_context(self, context):
+    info = &quot;LIVES: %d          SCORE: %d&quot; % (self.context.lives, self.context.score) + &quot;\n&quot;
+        terrain = self.terrain.show(self.context.snakes, self.context.fruit, self.context.obstacles)
+        View.render(info + terrain)
+    &quot;&quot;&quot;&quot;
+    Clear the screen (platform dependent)
+    &quot;&quot;&quot;
+    @staticmethod
+    def __clear_screen():
+    if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Show a message in the screen
+    &quot;&quot;&quot;
+    @staticmethod
+    def render(message):
+        import sys
+        reload(sys)
+        sys.setdefaultencoding(&#39;utf-8&#39;)
+        View.__clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+ 
+&quot;&quot;&quot;
+Stores the actual state of the game (interface)
+&quot;&quot;&quot;
+class GameState:
+    def loop(self, controller): 
+        raise NotImplementedError()
+    def new_game(self): 
+        raise NotImplementedError()
+    def set_difficulty(self, difficulty): 
+        raise NotImplementedError()
+    def set_direction(self, direction):
+        raise NotImplementedError()
+ 
+&quot;&quot;&quot;
+Initial state of the game
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.INITIAL)
+    def new_game(self): 
+        self.context.state = StatePickDifficulty(self.context) 
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass 
+ 
+&quot;&quot;&quot;
+Pick difficulty screen
+&quot;&quot;&quot;
+class StatePickDifficulty(GameState):
+    def __init__(self, context):
+        self.context = context
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self, controller):
+        View.render(View.DIFFICULTY)
+    &quot;&quot;&quot;
+    Start a new game
+    &quot;&quot;&quot;
+    def new_game(self): 
+        self.context.state = StateInitial(self.context) 
+    &quot;&quot;&quot;
+    Set game difficulty
+    &quot;&quot;&quot;
+    def set_difficulty(self, difficulty):
+        self.context.difficulty = difficulty
+        self.context.state = StatePlaying(self.context)
+    &quot;&quot;&quot;
+    Change snake&#39;s direction
+    &quot;&quot;&quot;
+    def set_direction(self, direction): pass
+ 
+&quot;&quot;&quot;
+Here is where the game happens itself
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        self.context = context
+        self.width = self.context.width
+        self.height = self.context.height
+        self.lives = self.context.lives
+        self.score = 0 
+        self.view = View(self)
+        self.snakes = [Snake(self.width / 2, self.height / 2, self.width, self.height)] 
+        self.fruit = TerrainObject(self)
+        self.direction = Direction.forward 
+        self.direction_queue = [] 
+        self.snakes_queue = [] 
+        self.obstacles = [] 
+        number_of_obstacles = randint((context.difficulty - 1) * 2, (self.context.difficulty - 1) * 3)
+        for i in range(number_of_obstacles):
+            self.obstacles.append(TerrainObject(self))
+    &quot;&quot;&quot;
+    Stores snakes&#39; movement in a queue
+    &quot;&quot;&quot;
+    def __queue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].append(self.snakes[i-1].direction)
+    &quot;&quot;&quot;
+    Update the movement queue
+    &quot;&quot;&quot;
+    def __dequeue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].pop(0) 
+    &quot;&quot;&quot;
+    Check if snake&#39;s head hit some obstacle (including itself)
+    &quot;&quot;&quot;
+    def __hit_obstacle(self):
+        for i in range(1, len(self.snakes)):
+            if self.snakes[0].x == self.snakes[i].x and self.snakes[0].y == self.snakes[i].y:
+                return True
+        for obstacle in self.obstacles:
+            if self.snakes[0].x == obstacle.x and self.snakes[0].y == obstacle.y:
+                return True
+        return False
+    &quot;&quot;&quot;
+    Move all the snake parts towards its direction
+    &quot;&quot;&quot;
+    def __move(self):
+        for i in range(1, len(self.snakes)):
+            self.snakes[i].turn_and_move(self.direction_queue[i-1][0]) 
+        success = self.snakes[0].turn_and_move(self.direction)
+        if self.__hit_obstacle():
+            self.lives = 0
+            return False
+        return success 
+    &quot;&quot;&quot;
+    Makes the snake grow
+    &quot;&quot;&quot;
+    def __queue_growth(self):
+        x = self.snakes[0].x
+        y = self.snakes[0].y
+        self.snakes_queue.append(Snake(x, y, self.width, self.height)) 
+    &quot;&quot;&quot;
+    Check if snake left fruit position (so its new part can be appended)
+    &quot;&quot;&quot;
+    def __is_free(self, queued_snake): 
+        for existing_snake in self.snakes:
+            if existing_snake.x == queued_snake.x and existing_snake.y == queued_snake.y:
+                return False
+        return True 
+    &quot;&quot;&quot;
+    Append a snake&#39;s part that was in queue
+    &quot;&quot;&quot;
+    def __dequeue_growth(self):
+        for i in range(len(self.snakes_queue)-1,-1,-1):
+            if self.__is_free(self.snakes_queue[i]):
+                self.snakes.append(self.snakes_queue[i]) 
+                self.snakes_queue.pop(i) 
+                self.direction_queue.append([])
+    def loop(self, controller):
+        if controller.speed &gt; 40: 
+            controller.speed -= 1
+        if self.fruit.hit(self.snakes[0]):
+            self.fruit = TerrainObject(self)
+            self.score += 1
+            self.__queue_growth()
+        self.__queue_movement() 
+        if not self.__move():
+            self.lives -= 1
+            if self.lives &lt; 0: 
+                self.context.state = StateGameOver(self.context)
+                controller.speed = 300
+                return
+        self.__dequeue_movement() 
+        self.__dequeue_growth()
+        self.view.render_context(self) 
+    def new_game(self):
+        self.context.state = StateInitial(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction):
+        self.direction = direction
+ 
+&quot;&quot;&quot;
+Game over screen
+&quot;&quot;&quot;
+class StateGameOver(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.GAME_OVER)
+    def new_game(self):
+        self.context.state = StatePickDifficulty(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass
+ 
+class Game:
+    def __init__(self, width, height, lives):
+        self.width = width
+        self.height = height
+        self.lives = lives
+        self.state = StateInitial(self) 
+    def loop(self, controller):
+        self.state.loop(controller)
+    def new_game(self):
+        self.state.new_game()
+    def set_difficulty(self, difficulty):
+        self.state.set_difficulty(difficulty)
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+ 
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+    import Tkinter
+    class Controller:
+        def __init__(self):
+            self.game = Game(30, 15, 3) 
+            self.speed = 300 
+            self.start_game()
+        def press_key(self, event):
+            key = event.keysym.lower()
+            if key == &quot;escape&quot;: #ESC
+                return False
+            elif key == &quot;n&quot;: #Enter
+                self.game.new_game()
+            elif key == &quot;1&quot; or key == &quot;2&quot; or key == &quot;3&quot;: 
+                self.game.set_difficulty(int(key)) 
+            elif key == &quot;d&quot;: #Right arrow
+                self.game.set_direction(Direction.forward) 
+            elif key == &quot;a&quot;: #Left arrow
+                self.game.set_direction(Direction.backward)
+            elif key == &quot;w&quot;: #Up arrow
+                self.game.set_direction(Direction.upward)
+            elif key == &quot;s&quot;: #Down arrow
+                self.game.set_direction(Direction.downward)
+            return True
+        def loop(self): 
+            self.game.loop(self)   
+            self.console.after(self.speed, self.loop)
+        def start_game(self):
+            self.console = Tkinter.Tk()
+            self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+            self.console.withdraw()
+            try:
+                self.console.after(self.speed, self.loop)
+                self.console.mainloop()
+            except KeyboardInterrupt: pass
+    Controller()
+    
+def controller_unix():
+    import termios, tty, thread
+    class NonBlockingConsole(object):
+        def __enter__(self):
+            self.old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+            return self
+        def __exit__(self, type, value, traceback):
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+        def get_data(self):
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                return sys.stdin.read(1)
+            return False
+     
+    class Controller:
+        def __init__(self):
+            self.game = Game(30, 15, 3) 
+            self.speed = 300 
+            self.start_game()
+        def press_key(self, nbc):
+            key = str(nbc.get_data())
+            if key == &#39;\x1b&#39;: #ESC
+                return False
+            elif key == &#39;n&#39;: #Enter
+                self.game.new_game()
+            elif key == &#39;1&#39; or key == &#39;2&#39; or key == &#39;3&#39;: 
+                self.game.set_difficulty(int(key)) 
+            elif key == &#39;d&#39;: #Right arrow
+                self.game.set_direction(Direction.forward) 
+            elif key == &#39;a&#39;: #Left arrow
+                self.game.set_direction(Direction.backward)
+            elif key == &#39;w&#39;: #Up arrow
+                self.game.set_direction(Direction.upward)
+            elif key == &#39;s&#39;: #Down arrow
+                self.game.set_direction(Direction.downward)
+            return True
+        def loop(self, threadName): 
+            while self.running:
+                time.sleep(self.speed/1000.0)
+                self.game.loop(self)   
+        def start_game(self):
+            self.running = True
+            thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+            try:
+                with NonBlockingConsole() as nbc:
+                    while self.press_key(nbc): pass
+            except KeyboardInterrupt: pass
+            self.running = False
+    Controller()
+    
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-09-17T22:26:50-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>17</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:26 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/games/'>games</a>, <a class='category' href='/blog/categories/python/'>python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/09/19/python-2-dot-7-pypac/" title="Next Post: (Python 2.7) PyPac">(Python 2.7) PyPac &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

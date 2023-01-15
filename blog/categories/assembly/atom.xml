@@ -1,0 +1,568 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Assembly | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/assembly/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Mixing Assembly and C]]></title>
+    <link href="http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
+    <updated>2016-02-27T10:24:56-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
+    <content type="html"><![CDATA[<p>In many applications, mixing Assembly and C is routine (pun intended). There are many reasons for it, but, in general, you want to use Assembly when you want to deal with the hardware directly or perform a task with maximum speed and minimum use of resources, while you use C to perform some high level stuffs that don&rsquo;t attend the former requirements. In either case, you&rsquo;ll need one integrated system.</p>
+
+<p>There are three ways to mix Assembly and C:</p>
+
+<ul>
+<li>Using Assembly-defined functions into C</li>
+<li>Using C-defined functions into Assembly</li>
+<li>Using Assembly code in C</li>
+</ul>
+
+
+<p>We&rsquo;ll explore them all in this tutorial.</p>
+
+<!-- more --> 
+
+
+<h2>Using Assembly-defined functions in C</h2>
+
+<p>Let&rsquo;s first take the example of a function that takes no parameters and doesn&rsquo;t return anything, like one that just prints something on screen.</p>
+
+<pre><code class="as hello_world.s">.globl hello_world
+.type hello_world, @function 
+.section .data
+message: .ascii "Hello, World!\n"
+length: .quad . - message
+.section .text
+hello_world:
+    mov $1, %rax
+    mov $1, %rdi
+    mov $message, %rsi
+    mov length, %rdx
+    syscall
+    ret
+</code></pre>
+
+<p>(If you don&rsquo;t quite understand the above syntax, read my <a href="http://localhost:4000/blog/2016/02/21/factorial-function-in-assembly/">previous tutorial</a>)</p>
+
+<p>Now let&rsquo;s create a C program to call this function:</p>
+
+<pre><code class="c hello_world.c">extern void hello_world();
+
+int main() 
+{
+    hello_world();
+    return 0;
+}
+</code></pre>
+
+<p>Notice the use of <code>extern</code> keyword. It tells the compiler that the definition of a given function or variable is defined in somewhere else other than the current file. It&rsquo;s the <strong>linker</strong> job to connect this declaration with the actual definition.</p>
+
+<p>Now let&rsquo;s compile and link our both programs at the same time in order to obtain an executable file:</p>
+
+<pre><code class="bash ">gcc hello_world.c hello_world.s -o hello_world
+</code></pre>
+
+<p>That&rsquo;s all! Pretty easy, right? Now let&rsquo;s advance to a more challenging scenario: A function that returns a value. As I said on previous tutorial, by convention, Assembly functions return values on <code>AX</code> register. This is also true for C programs. Check out this example:</p>
+
+<pre><code class="as return_10.s">.globl return_10
+.type return_10, @function 
+return_10:
+    movl $10, %eax
+    ret
+</code></pre>
+
+<p>This function only puts the value &lsquo;10&rsquo; into the EAX register. Now on C side:</p>
+
+<pre><code class="c return_10.c">#include &lt;stdio.h&gt;
+
+extern int return_10();
+
+int main() 
+{
+    printf("%d\n", return_10());
+}
+</code></pre>
+
+<p>It&rsquo;s worth noting that, on Assembly side, I&rsquo;m moving a two words value into the EAX register. I could move a four words value to the RAX register instead, but it would print 0. Why? Here&rsquo;s the reason:</p>
+
+<p style="text-align:center;"><img src="http://nullprogram.com/img/x86/register.png" alt="" /></p>
+
+<p>As you may know, RAX is the 64 bits version of the AX register, hence it can store 64 bits simultaneously. Those bits are stored from left to right, i.e., let&rsquo;s suppose we move the decimal value &lsquo;10&rsquo; into the RAX register. It would appear that way:</p>
+
+<p>01010000000000&hellip;0 (0101 + 60 zeroes).</p>
+
+<p>The EAX holds the 32 most significant bits (the lower half), therefore, if I access this sequence through EAX, I would only see zero values! And this is what the <code>int</code> datatype is implicitly converted to, since it&rsquo;s a datatype with size equals to 32 bits. In order to avoid this problem, I should either stick with EAX, EBX&hellip; registers or use <code>long int</code> on C side.</p>
+
+<blockquote><p>Lesson learnt: One must check if the size of registers match the size of types in C.</p></blockquote>
+
+<p>Now the last scenario: A function that takes parameters and returns a value, like that one that returns the sum of two values:</p>
+
+<pre><code class="c sum.c">#include &lt;stdio.h&gt;
+
+extern int sum(int, int);
+
+int main() 
+{
+    printf("%d\n", sum(2, 3));
+    return 0;
+}
+</code></pre>
+
+<p>Now the Assembly definition:</p>
+
+<pre><code class="as sum.as">.globl sum
+.type sum, @function
+sum:
+    addl %edi, %esi
+    movl %esi, %eax
+    ret
+</code></pre>
+
+<p>You may be asking: Hey, what&rsquo;s wrong? Why am I using the <code>edi</code> and <code>esi</code> registers?</p>
+
+<p>Here&rsquo;s the trick: In GCC compiler, instead of the parameters being pushed into the stack by the callee to be read from the calling function, they are stored in registers. It&rsquo;s the calling function job to push them into the stack if they need to. Those registers are used in the following order:</p>
+
+<ul>
+<li>_di: Holds the first argument</li>
+<li>_si: Holds the second argument</li>
+<li>_dx: Holds the third argument</li>
+<li>_cx: Holds the fourth argument</li>
+<li>r8d: Holds the fifth argument</li>
+<li>r9d: Holds the sixth argument</li>
+</ul>
+
+
+<p>And so on&hellip; In the above example, the value <code>2</code> is stored in the <code>edi</code> register and the value <code>3</code> is stored in the <code>esi</code> register. Therefore, we simply sum them (through the <code>addl</code> instruction) and move the result to <code>eax</code> register.</p>
+
+<h2>Using C-defined functions into Assembly</h2>
+
+<p>Here&rsquo;s the first example: Using the <code>printf</code> C function into Assembly:</p>
+
+<pre><code class="as hello_world.s">.extern printf
+.globl main
+.section .data
+message: .ascii "Hello, World!\n"
+format: .ascii "%s"
+.section .text
+main:
+    mov $format, %rdi
+    mov $message, %rsi
+    mov $0, %rax
+    call printf
+    ret
+</code></pre>
+
+<p>Now compile the Assembly program with GCC:
+<code>bash
+gcc hello_world.s -o hello_world
+</code></p>
+
+<p>The GCC will automatically link with the function definition. In the same way we used the <code>extern</code> keyword in C, we use the <code>.extern</code> directive to tell the Assembler that <code>printf</code> is defined externally.</p>
+
+<p>That is equivalent to the following C program:</p>
+
+<pre><code class="c hello_world.c">#include &lt;stdio.h&gt;
+
+int main() 
+{
+    return printf("%s", "Hello, World!\n");
+}
+</code></pre>
+
+<p>When compiling Assembly programs with GCC, the starting symbol is no longer <code>_start</code> but <code>main</code>. <code>main</code> is a function, therefore it must have the <code>ret</code> instruction in the end of it.</p>
+
+<p>The <code>printf</code> in C takes two or more parameters: The format and the value(s). As said previously, the first parameters goes to <code>rdi</code> register while the second parameter goes to <code>rsi</code> register. Note: Before calling the function, the value of <code>rax</code> must be zero!</p>
+
+<p>Our second example is using the <code>scanf</code> function. Like <code>printf</code>,  it takes two more parameters: The format and the destinating addresses where the standard input will be stored. Note: The second and so on parameters are no longer values, but memory addresses (pointers).</p>
+
+<pre><code class="as example_scanf.s">.extern scanf
+.globl main
+.section .data
+a: .double 0
+b: .double 0
+format: .ascii "%d %d"
+.section .text
+main:
+    mov $format, %rdi
+    mov $a, %rsi
+    mov $b, %rdx
+    mov $0, %rax
+    call scanf
+    movl a, %eax
+    movl b, %ebx
+    addl %ebx, %eax
+    ret
+</code></pre>
+
+<p>First, we declare three &ldquo;variables&rdquo; in data section:</p>
+
+<ul>
+<li>a: A two words (32 bits) region of memory that initially stores the value zero;</li>
+<li>b: A two words (32 bits) region of memory that initially stores the value zero;</li>
+<li>format: A region of memory that stores the ASCII string &ldquo;%d %d&rdquo;.</li>
+</ul>
+
+
+<p>We then pass the address of <code>format</code> as first parameter, the address of <code>a</code> as second parameter and the address of <code>b</code> as third parameter. Before calling <code>scanf</code>, we set <code>RAX</code> to 0 (just like in the printf example). After it, we move the value stored in <code>a</code> address to <code>eax</code> register and the value stored in <code>b</code> address to <code>ebx</code> register. We then sum them both and store the result in <code>eax</code>.</p>
+
+<p>After executing the program, if we echo the program execution status:</p>
+
+<pre><code class="bash">echo $?
+</code></pre>
+
+<p>We&rsquo;ll able to see the sum of both typed numbers.</p>
+
+<p>The above example is equivalent to the following C program:</p>
+
+<pre><code class="c example_scanf.c">#include &lt;stdio.h&gt;
+
+int main() 
+{
+    int a = 0;
+    int b = 0;
+    char* format = "%d %d";
+    scanf(format, &amp;a, &amp;b);
+    return a + b;
+}
+</code></pre>
+
+<h2>Using Assembly code in C</h2>
+
+<p>Our third category is pretty straight-forward. See the example:</p>
+
+<pre><code class="c sum.c">#include &lt;stdio.h&gt;
+
+int sum(int a, int b) 
+{
+    asm("addl %edi, %esi");
+    asm("movl %esi, %eax");
+}
+
+int main() 
+{
+    printf("%d\n", sum(2, 3));
+    return 0;
+}
+</code></pre>
+
+<p>Now you can compile it normally:</p>
+
+<pre><code class="bash">gcc sum.c -o sum
+</code></pre>
+
+<p>The compiler will simply insert the assembly code in the appropriated place in the compiled code.</p>
+
+<h2>Conclusion</h2>
+
+<p>We&rsquo;ve just learnt very very powerful tools! Learning how to mix Assembly and C give us a deep insight of how the C compiler actually works. I strongly recommend <a href="https://assembly.ynh.io/">this website</a> for further learning. Play with it around, try some snippets, and see how it&rsquo;s translated into Assembly.</p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[Factorial Function in X86_64 Assembly]]></title>
+    <link href="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/"/>
+    <updated>2016-02-21T17:08:47-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly</id>
+    <content type="html"><![CDATA[<p>Lately I&rsquo;ve been reading the book <a href="http://download-mirror.savannah.gnu.org/releases/pgubook/ProgrammingGroundUp-1-0-booksize.pdf">Programming from the Ground Up</a> by Jonathan Barlett. It teaches x86 assembly language programming from the very grounding blocks. Applying the concepts learnt in the book, I&rsquo;ll show you how to write a factorial function in x86_64 Assembly.</p>
+
+<!-- more -->
+
+
+<p>There are many assembly languages: Intel, AT&amp;T, NASM, etc,&hellip; In this tutorial, I&rsquo;m going to use the AT&amp;T syntax, which can be easily assembled in any linux machine through the GNU Assembler (GAS).</p>
+
+<p>Let&rsquo;s start by creating a file named <code>main.s</code> (&rsquo;s&#8217; is the standard extension for assembly programs).</p>
+
+<p>Every assembly program is composed by three sections: <strong>data</strong>, <strong>bss</strong> and <strong>text</strong>. The <strong>data</strong> section is used to initialize constants. Those constants are preallocated during the program initialization. The <strong>bss</strong> section is used to declare buffers, or dynamically allocated data. Finally, the <strong>text</strong> section is used to keep the actual code. None of them are mandatory, but it&rsquo;s a good pratice to define them explicitally.</p>
+
+<pre><code class="as main.s">.section .text
+</code></pre>
+
+<blockquote><p>The &ldquo;.&rdquo; indicates that the instruction is a directive to the assembler (just like # in C is a directive to the compiler).</p></blockquote>
+
+<p>In order to execute your program, the operating system needs to know where&rsquo;s the start of your program (like a &ldquo;main&rdquo; function). In Assembly, this is accomplished through the <code>_start</code> label.</p>
+
+<pre><code class="as main.s">.globl _start
+.section .text
+_start:
+</code></pre>
+
+<p>A <strong>label</strong> is just a placeholder for a memory position. On <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von Neumann architecture</a> (which is the architecture used by most of modern computers), code is actually kept on memory along with the data that it manipulates. For the processor, there&rsquo;s absolutely no distinction into code and data. In the above example, the label would exercise the function of pointing to a &lsquo;code line&rsquo; (This is a oversimplification).</p>
+
+<p>You must have noticed the use of <code>globl</code> directive. It&rsquo;s used to make a symbol visible to the linker. We&rsquo;ll talk about it later, just be informed that it&rsquo;s mandatory to the _start label.</p>
+
+<p>Alright! Now let&rsquo;s make our program just exit in order to obtain a basic executable program.</p>
+
+<pre><code class="as main.s">.globl _start
+.section .text
+_start:
+    mov $1, %rax
+    mov $0, %rbx
+    int $0x80
+</code></pre>
+
+<p>The <code>rax</code> and <code>rbx</code> are both <a href="https://en.wikipedia.org/wiki/Processor_register">general purporse registers</a>. The <code>int</code> instruction is a <strong>interruption</strong>. When we use the 0x80 code, we are saying that this interruption must be handled by the linux operating system. In another words, we are performing a <a href="https://en.wikipedia.org/wiki/System_call">system call</a>. The code of the system call is stored in the <code>rax</code> register. The <code>1</code> is the code for the <strong>exit</strong> system call. The <strong>exit</strong> system call takes one parameter, the return value, which is stored in the <code>rbx</code> register. In this case, we are returning the value <code>0</code>. By the way, the <code>$</code> is used to indicate constant values. If we omit it, it would be interpreted as a memory address instead.</p>
+
+<p>In C, the code we just typed would be equivalent to:
+<code>c main.c
+int main()
+{
+    return 0;
+}
+</code></p>
+
+<p>You can turn it into a executable code by calling:
+<code>bash
+as main.s -o main.o
+ld main.o -o main
+./main
+</code></p>
+
+<p>But a program like that is of no use, right? So let&rsquo;s create our factorial function. Functions in assembly are a kind of a headache, because you need to explicitally manipulate the stack.</p>
+
+<h2>The stack</h2>
+
+<p><strong>Stack</strong> is a contiguous region of memory reserved for the program by the operating system.</p>
+
+<p><img src="https://www.cs.umd.edu/class/sum2003/cmsc311/Notes/Mips/Figs/stack1.png" alt="" /></p>
+
+<p>There&rsquo;s a special register called <code>rsp</code> (stack pointer) that points to the &lsquo;top&rsquo; of the stack. So how do we store things in the stack? By simply using <code>mov</code> instruction and manipulating the stack pointer. For example, let&rsquo;s suppose we want to store two values in the stack, <code>1</code>  and <code>2</code>. It could be accomplished that way:</p>
+
+<pre><code class="as">sub $16, %rsp
+mov $1, %rax
+mov $2, %rbx
+mov %rax, 16(%rsp)
+mov %rbx, 8(%rsp)
+</code></pre>
+
+<p>Stack is a structure that grows upward, in the sense of it first begins with addresses of higher values and grows towards addresses of lower values. In the above example, we are using <strong>8</strong> bytes of the stack to store the value <code>1</code> and equally 8 bytes to store the value <code>2</code>, so we need to step down the stack pointer by a value of 16 (we use 8 bytes because on x64 architecture, the registers have 8 bytes. 8 x 8 = 64 bits).</p>
+
+<p>Since manipulating the stack pointer directly is boring, there are two special instructions to accomplish the same effect: <code>push</code> and <code>pop</code>. <code>push</code> subtracts the stack pointer by 8 and stores the parameter into the current address pointed by the stack pointer. <code>pop</code> moves the data stored in the address currently pointed by the stack pointer to a register and adds the stack pointer by 8.</p>
+
+<h2>Recursive factorial function</h2>
+
+<p>Create a file named <code>factorial.s</code>. Insert the following code:</p>
+
+<pre><code class="as factorial.s">.globl factorial
+.type factorial,@function
+factorial:
+</code></pre>
+
+<p>We use the <code>globl</code> directive because we want the <strong>factorial</strong> label to be visible to other programs (we want to use the function in other programs). Here&rsquo;s the first trick: &ldquo;Calling&rdquo; a function is simply jumping to the memory address where this function is defined.</p>
+
+<p>The new thing here is the <code>type</code> directive. Don&rsquo;t worry, it&rsquo;s just a directive to indicate that the label is not a common label but actually a function.</p>
+
+<p>Now let&rsquo;s go back to our main program and call this function:</p>
+
+<pre><code class="as main.s">.globl _start
+.section .text
+_start:
+    push $5
+    call factorial
+    add $8, %rsp
+    mov %rax, %rbx
+    mov $1, %rax
+    int $0x80
+</code></pre>
+
+<p>This may seem complicated at the first glance, but it&rsquo;s rather simple. We first store the value <code>5</code> in the stack. Since we cannot pass arguments directly while calling the function like in other languages, we need to store the arguments in the stack. In this case, 5 will be first the argument for the <code>factorial</code> function: The number we want to calculate the factorial.</p>
+
+<p>After that, we use the <code>call</code> instruction. What the <code>call</code> instruction actually does is just storing the current address into the stack pointer (because we need to know to where return after the function has been finished!) and jumping to the <code>factorial</code> label.</p>
+
+<p>Finally, we increase the stack pointer (because we no longer need the function parameters stored in the stack, we can safely override them to prevent <em>memory leaks</em>) and move the function return (the function return is, by convenction, always stored in the <code>rax</code> register) to the <code>rbx</code> so we can display it after the program has been executed (through the echo $? command).</p>
+
+<p>Our main program is finished. It&rsquo;s roughly equivalent to the following C program:</p>
+
+<pre><code class="c main.c">int factorial(int);
+int main()
+{
+    return factorial(5);
+}
+</code></pre>
+
+<p>Now let&rsquo;s focus on our factorial function.
+The very first thing we need to do in a function is to store the <code>rbp</code> register. <code>rbp</code> is the base pointer register. It points to the beginning of the current <strong>stack frame</strong>. Stack frame is the region of stack where we stored our function parameters and function return address. Since we can call functions inside functions, we need to store the &lsquo;context&rsquo; of the previous function call (if any).</p>
+
+<pre><code class="as factorial.s">.globl factorial
+.type factorial,@function
+factorial:
+    push %rbp
+    mov %rsp, %rbp
+</code></pre>
+
+<p>We move the current stack pointer to the <code>rbp</code> register. Now we are within the context of the current function. Let&rsquo;s retrieve the arguments:</p>
+
+<pre><code class="as factorial.s">.globl factorial
+.type factorial,@function
+factorial:
+    push %rbp
+    mov %rsp, %rbp
+    mov 16(%rbp), %rbx # Get the first parameter
+</code></pre>
+
+<p>Remember: We use <code>rbp + 16</code> because we pushed the parameter value into the stack first (the second pushed value was the function return address, therefore it stands on top).</p>
+
+<p>Since we are implementing the recursive version, we first need to define the recursion base: If the parameter value is less or equal than 1, return 1.</p>
+
+<pre><code class="as factorial.s">.globl factorial
+.type factorial,@function
+factorial:
+    push %rbp
+    mov %rsp, %rbp
+    mov 16(%rbp), %rbx # Get the first parameter
+    # Check recursion base
+    cmp $1, %rbx
+    je factorial_base
+factorial_base:
+    # Return value 1
+    mov $1, %rax
+factorial_end:
+    # Restore pointer
+    mov %rbp, %rsp
+    pop %rbp # Restore context
+    ret # Return 
+</code></pre>
+
+<p>Wow, a lot of things happened here! Let&rsquo;s calmly analyze each one of them. First, we compare the parameter value to one (through the <code>cmp</code> instruction). Then, we check if the parameter value is equal than one. If so, we jump to the <code>factorial_base</code> label. This <strong>conditional jump</strong> is accomplished by the <code>je</code> instruction (jump on equal). The <code>cmp</code> instruction sets a flag on <code>flags</code> register, which the <strong>conditional jump</strong> will look up to decide if it will jump or not.</p>
+
+<p>Once within the <code>factorial_base</code> label, we move the value <code>1</code> into the <code>rax</code> register. The <code>rax</code> will store the final value of our calculation. The program flow will then move automatically to the label right below, <code>factorial_end</code>.</p>
+
+<p>The <code>factorial_end</code> label will restore the stack pointer to where it was when the function was called (in case we have manipulated it inside the function body, which we didn&rsquo;t, but it&rsquo;s a good pratice to keep our code generic) and will then restore the base pointer register. Finally, there&rsquo;s this <code>ret</code> instruction, which will return to the value currently pointed by the stack pointer (the function return address).</p>
+
+<p>Now let&rsquo;s implement the recursive calls:</p>
+
+<pre><code class="as factorial.s">.globl factorial
+.type factorial,@function
+factorial:
+    push %rbp
+    mov %rsp, %rbp
+    mov 16(%rbp), %rbx # Get the first parameter
+    # Check recursion base
+    cmp $1, %rbx
+    je factorial_base
+    # Decrease the value of parameter
+    dec %rbx
+    # Call factorial recursively
+    push %rbx
+    call factorial
+    add $8, %rsp
+    # Multiply the current parameter by the recursive call return value
+    mov 16(%rbp), %rbx
+    imul %rbx, %rax
+    # Finish function
+    jmp factorial_end
+factorial_base:
+    # Return value 1
+    mov $1, %rax
+factorial_end:
+    # Restore pointer
+    mov %rbp, %rsp
+    pop %rbp # Restore context
+    ret # Return
+</code></pre>
+
+<p>After we checked our recursion base condition (and failed), we decremented the value of the parameter in order to pass it as argument to the same function again (through the <code>decl</code> instruction). The way of calling the same function is identical to the code we wrote on our main program: We push the arguments into the stack and call the <code>call</code> instruction.</p>
+
+<p>Once the recursive function has been finished, its return value is stored in the <code>rax</code> register. Before multiplying the current parameter by the return value of the recursive call, we first need to restore its original value (remember: When we made recursive call, it was overrided). We accomplish it by calling: <code>mov 16(%rbp), %rbx</code>. We then multiply the value of <code>rbx</code> by <code>rax</code> and store the result in <code>rax</code> through the <code>imul</code> instruction. After it, we jump to the end of our function (<code>factorial_end</code>).</p>
+
+<p>That&rsquo;s it! Not that hard, right? Take of time to ensure you have understood every piece of our code.</p>
+
+<p>The above code is roughly equivalent to the following C code:
+<code>c factorial.c
+int factorial(int n)
+{
+    if (n == 1) return 1;
+    return n * factorial(n - 1);
+}
+</code></p>
+
+<p>hehe, Assembly is such a pain. :)</p>
+
+<h2>Generating executable code</h2>
+
+<p>Now let&rsquo;s generate our executable code. First, let&rsquo;s generate <a href="https://en.wikipedia.org/wiki/Object_code">object code</a> from our both assembly programs:</p>
+
+<pre><code class="bash ">as main.s -o main.o
+as factorial.s -o factorial.o 
+</code></pre>
+
+<p>Let&rsquo;s link our two object codes into a single executable code:</p>
+
+<pre><code class="bash">ld main.o factorial.o -o main
+</code></pre>
+
+<p>Now execute:
+<code>bash
+./main
+</code></p>
+
+<p>We can check our program return by calling:</p>
+
+<pre><code class="bash">echo $?
+</code></pre>
+
+<p>A value of <code>120</code> must have prompted, that is the factorial of 5.</p>
+
+<p>It&rsquo;s worth noting that if we omit the <code>.globl factorial</code> in <code>factorial.s</code>, the linker would prompt an error, since it cannot resolve the symbol.</p>
+
+<h2>Iterative factorial function</h2>
+
+<p>The factorial function can also be implemented in a single loop. Observe the following C code:</p>
+
+<pre><code class="c iterative_factorial.c">int factorial(int n)
+{
+    int i = n - 1;
+    while (i &gt; 1)
+    {
+        n *= i;
+        i--;
+    }
+    return n;
+}
+</code></pre>
+
+<p>Since the program is bigger in C than the previous version, we may think that it would be even more complex in Assembly than the previous Assembly program. However, it&rsquo;s actually simpler:</p>
+
+<pre><code class="as iterative_factorial.s">.section .text
+.globl factorial
+.type factorial, @function
+factorial:
+        push %rbp
+        mov %rsp, %rbp
+        mov 16(%rsp), %rax
+        mov %rax, %rbx
+        dec %rbx
+        jmp factorial_loop
+factorial_loop:
+        cmp $1, %rbx
+        je factorial_end
+        imul %rbx, %rax
+        dec %rbx
+        jmp factorial_loop
+factorial_end:
+        mov %rbp, %rsp
+        pop %rbp
+        ret
+</code></pre>
+
+<p>We copy the parameter value to the <code>rbx</code> register. It will exercise the same function of the <code>i</code> variable in the C code. We then decrease the value of i and then jump to the loop.</p>
+
+<p>On our loop, we compare the value of <code>rbx</code> (i) to one. If it&rsquo;s equal, we exit our loop. Otherwise, we multiply <code>rbx</code> by <code>rax</code> and store the result in <code>rax</code>. In the end, we return to the beginning of our loop.</p>
+
+<h2>Conclusion</h2>
+
+<p>Well, well&hellip; We learnt important Assembly concepts in this tutorial: System calls, the stack, functions&hellip; It&rsquo;s a lot! You already are able to implement some other simple algorithms (try Fibonacci!).</p>
+]]></content>
+  </entry>
+  
+</feed>

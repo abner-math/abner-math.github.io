@@ -1,0 +1,641 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Blog - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="In this tutorial I will show you how to parse a hand-drawn hash game with Computer Vision techniques to determine who&rsquo;s the winner (if any). &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div class="blog-index">
+  
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-06-10T17:11:40-03:00'><span class='date'><span class='date-month'>Jun</span> <span class='date-day'>10</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>5:11 pm</span></time>
+        
+           | <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>In this tutorial I will show you how to parse a hand-drawn hash game with Computer Vision techniques to determine who&rsquo;s the winner (if any). See the example below:</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/XHP72q16iU8" frameborder="0" allowfullscreen></iframe>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2017-01-28T08:27:31-03:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>28</span><span class='date-suffix'>th</span>, <span class='date-year'>2017</span></span> <span class='time'>8:27 am</span></time>
+        
+           | <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>In this tutorial I will show you how you can control your mouse using only a simple webcam. Nothing fancy, super simple to implementate. Let&rsquo;s get on!</p>
+
+<iframe width="560" height="315" src="https://www.youtube.com/embed/jBXS1fbMDjE" frameborder="0" allowfullscreen></iframe>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-03-12T10:13:54-03:00'><span class='date'><span class='date-month'>Mar</span> <span class='date-day'>12</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>10:13 am</span></time>
+        
+           | <a href="/blog/2016/03/12/multithreaded-k-means-in-java/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Single-threaded algorithms are fine and intuitive. There&rsquo;s an single execution flow running our program in the exact order we specified it. However, modern CPUs have multiple cores sharing the same memory space, meaning that many instructions can be executed in the same clock cycle. Having an single execution flow would be a wasteful use of the resources we have available. That&rsquo;s where multithread applications come in: It allows the use of <strong>true</strong> parallelism.</p>
+
+<center><img src="/images/posts/Rplot02.png" /></center>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/03/12/multithreaded-k-means-in-java/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-27T10:24:56-03:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>27</span><span class='date-suffix'>th</span>, <span class='date-year'>2016</span></span> <span class='time'>10:24 am</span></time>
+        
+           | <a href="/blog/2016/02/27/mixing-assembly-and-c/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>In many applications, mixing Assembly and C is routine (pun intended). There are many reasons for it, but, in general, you want to use Assembly when you want to deal with the hardware directly or perform a task with maximum speed and minimum use of resources, while you use C to perform some high level stuffs that don&rsquo;t attend the former requirements. In either case, you&rsquo;ll need one integrated system.</p>
+
+<p>There are three ways to mix Assembly and C:</p>
+
+<ul>
+<li>Using Assembly-defined functions into C</li>
+<li>Using C-defined functions into Assembly</li>
+<li>Using Assembly code in C</li>
+</ul>
+
+
+<p>We&rsquo;ll explore them all in this tutorial.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/27/mixing-assembly-and-c/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-21T17:08:47-03:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2016</span></span> <span class='time'>5:08 pm</span></time>
+        
+           | <a href="/blog/2016/02/21/factorial-function-in-assembly/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Lately I&rsquo;ve been reading the book <a href="http://download-mirror.savannah.gnu.org/releases/pgubook/ProgrammingGroundUp-1-0-booksize.pdf">Programming from the Ground Up</a> by Jonathan Barlett. It teaches x86 assembly language programming from the very grounding blocks. Applying the concepts learnt in the book, I&rsquo;ll show you how to write a factorial function in x86_64 Assembly.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/02/21/factorial-function-in-assembly/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/">Is It a Cat or a Dog? A Neural Network Application in OpenCV</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-01-31T13:23:41-03:00'><span class='date'><span class='date-month'>Jan</span> <span class='date-day'>31</span><span class='date-suffix'>st</span>, <span class='date-year'>2016</span></span> <span class='time'>1:23 pm</span></time>
+        
+           | <a href="/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p style="text-align:center;"><img src="/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
+
+<p>From time to time, a website named <a href="http://www.kaggle.com">Kaggle</a> hosts several competitions in the fields of Data Science and Computer Vision. One of those competitions was the <a href="https://www.kaggle.com/c/dogs-vs-cats">Dogs vs. Cats</a> challenge, where the objective was &ldquo;to create an algorithm to distinguish dogs from cats&rdquo;. Although this particular challenge already has been finished, I thought that it&rsquo;d give me a pretty good material to a tutorial. Let&rsquo;s learn how to solve this problem together using OpenCV!</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/12/06/solving-the-sliding-puzzle/">Solving the Sliding Puzzle</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T17:01:05-03:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:01 pm</span></time>
+        
+           | <a href="/blog/2015/12/06/solving-the-sliding-puzzle/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><script src="/js/sliding-puzzle/minheap.js"></script>
+
+
+<script src="/js/sliding-puzzle/sliding-puzzle.js"></script>
+
+
+<script src="/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
+
+
+<p><link href="/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
+
+<p>Sliding puzzle is a game composed by 2<sup>n</sup> - 1 pieces dispersed along a board and a blank space. Those pieces are then shuffled and the objective is to rearrange them back to their original form, where the disposition of pieces is on ascending order, like shown below (go on, it&rsquo;s interactive):</p>
+
+<center>
+    <div>
+        <div id="container-a-example" class="puzzle"></div>
+    </div>
+</center>
+
+
+<p></p>
+
+<script type="text/javascript">
+    new PuzzleGUI($("#container-a-example"), 4, 50, 5, 100, 10, Algorithm.AManhattan);
+</script>
+
+
+<p>You can rearrange the pieces &ldquo;moving&rdquo; the blank space across the board. Since you can only move it in four directions, it&rsquo;s a hell of a task to solve this game for a human, sometimes taking hours. Luckily, we dispose of some good algorithms to solve it, taking only few milliseconds even for the worst case. Let&rsquo;s explore them in this tutorial! :)</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/12/06/solving-the-sliding-puzzle/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/11/15/fingertip-detection-on-opencv/">Fingertip Detection in OpenCV</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-11-15T00:06:15-03:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:06 am</span></time>
+        
+           | <a href="/blog/2015/11/15/fingertip-detection-on-opencv/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Hi! In this tutorial, we will learn how to detect fingertips using OpenCV. You ready? :D</p>
+
+<p style="text-align:center;"><img src="/images/posts/fingertip1.png" alt="" /></p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/11/15/fingertip-detection-on-opencv/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/">Parallel Genetic Algorithm in C++ Using TBB</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-10-11T09:55:50-03:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>11</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>9:55 am</span></time>
+        
+           | <a href="/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>I&rsquo;ve just finished my AI course, and the idea of <a href="https://en.wikipedia.org/wiki/Evolutionary_computation">evolutionary computing</a> has appealed me incredibly. Basically, evolutionary computing is a set of algorithms inspired by <a href="https://en.wikipedia.org/wiki/Evolution">Charles Darwin&rsquo;s Theory of Evolution</a> with intent of providing some intel on solving optimization problems. On this category, it&rsquo;s included its most prominent example, the <a href="https://en.wikipedia.org/wiki/Genetic_algorithm">Genetic Algorithm</a>.</p>
+
+<p>But what is the Genetic Algorithm? It&rsquo;s really pretty simple (and beautiful): Genetic Algorithm is a heuristic to search for the best solution of a optimization problem (such as the <a href="https://en.wikipedia.org/wiki/Knapsack_problem">Knapsack problem</a>, finding the best parameters of a neural network, and many others&hellip;), the &lsquo;best&rsquo; here having direct analogy to the Theory of Evolution &lsquo;survival of the fittest&rsquo;.</p>
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  
+    <article>
+      
+  <header>
+    
+      <h1 class="entry-title"><a href="/blog/2014/10/18/python-2-dot-7-mesquita/">(Python 2.7) Mesquita</a></h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-10-18T18:30:35-03:00'><span class='date'><span class='date-month'>Oct</span> <span class='date-day'>18</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>6:30 pm</span></time>
+        
+           | <a href="/blog/2014/10/18/python-2-dot-7-mesquita/#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita/">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+  <div class="entry-content"><p>Ahhh, and good and old (or not so old) statistics.</p>
+
+<p>I create this software to help with my homework. In the end, just by doing it I was able to learn much more about statistical models. :)</p>
+
+<p>Also, this software was my first attempt in create something with Python GUI, Tkinter. Wow, compared to Swing this one is like heaven!</p>
+
+<p style="text-align:center;"><img src="/images/posts/mesquita.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
+
+
+
+
+</div>
+  
+  
+    <footer>
+      <a rel="full-article" href="/blog/2014/10/18/python-2-dot-7-mesquita/">Read on &rarr;</a>
+    </footer>
+  
+
+
+    </article>
+  
+  <div class="pagination">
+    
+      <a class="prev" href="/blog/posts/2">&larr; Older</a>
+    
+    <a href="/blog/archives">Blog Archives</a>
+    
+  </div>
+</div>
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        var disqus_script = 'count.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

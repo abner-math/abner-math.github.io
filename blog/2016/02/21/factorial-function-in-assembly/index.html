@@ -1,0 +1,722 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Factorial Function in X86_64 Assembly - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="Lately I&rsquo;ve been reading the book Programming from the Ground Up by Jonathan Barlett. It teaches x86 assembly language programming from the &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Factorial Function in X86_64 Assembly</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2016-02-21T17:08:47-03:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2016</span></span> <span class='time'>5:08 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Lately I&rsquo;ve been reading the book <a href="http://download-mirror.savannah.gnu.org/releases/pgubook/ProgrammingGroundUp-1-0-booksize.pdf">Programming from the Ground Up</a> by Jonathan Barlett. It teaches x86 assembly language programming from the very grounding blocks. Applying the concepts learnt in the book, I&rsquo;ll show you how to write a factorial function in x86_64 Assembly.</p>
+
+<!-- more -->
+
+
+<p>There are many assembly languages: Intel, AT&amp;T, NASM, etc,&hellip; In this tutorial, I&rsquo;m going to use the AT&amp;T syntax, which can be easily assembled in any linux machine through the GNU Assembler (GAS).</p>
+
+<p>Let&rsquo;s start by creating a file named <code>main.s</code> (&rsquo;s&#8217; is the standard extension for assembly programs).</p>
+
+<p>Every assembly program is composed by three sections: <strong>data</strong>, <strong>bss</strong> and <strong>text</strong>. The <strong>data</strong> section is used to initialize constants. Those constants are preallocated during the program initialization. The <strong>bss</strong> section is used to declare buffers, or dynamically allocated data. Finally, the <strong>text</strong> section is used to keep the actual code. None of them are mandatory, but it&rsquo;s a good pratice to define them explicitally.</p>
+
+<figure class='code'><figcaption><span>main.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">section</span> <span class="p">.</span><span class="nx">text</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<blockquote><p>The &ldquo;.&rdquo; indicates that the instruction is a directive to the assembler (just like # in C is a directive to the compiler).</p></blockquote>
+
+<p>In order to execute your program, the operating system needs to know where&rsquo;s the start of your program (like a &ldquo;main&rdquo; function). In Assembly, this is accomplished through the <code>_start</code> label.</p>
+
+<figure class='code'><figcaption><span>main.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">_start</span>
+</span><span class='line'><span class="p">.</span><span class="nx">section</span> <span class="p">.</span><span class="nx">text</span>
+</span><span class='line'><span class="nx">_start</span><span class="o">:</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A <strong>label</strong> is just a placeholder for a memory position. On <a href="https://en.wikipedia.org/wiki/Von_Neumann_architecture">Von Neumann architecture</a> (which is the architecture used by most of modern computers), code is actually kept on memory along with the data that it manipulates. For the processor, there&rsquo;s absolutely no distinction into code and data. In the above example, the label would exercise the function of pointing to a &lsquo;code line&rsquo; (This is a oversimplification).</p>
+
+<p>You must have noticed the use of <code>globl</code> directive. It&rsquo;s used to make a symbol visible to the linker. We&rsquo;ll talk about it later, just be informed that it&rsquo;s mandatory to the _start label.</p>
+
+<p>Alright! Now let&rsquo;s make our program just exit in order to obtain a basic executable program.</p>
+
+<figure class='code'><figcaption><span>main.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">_start</span>
+</span><span class='line'><span class="p">.</span><span class="nx">section</span> <span class="p">.</span><span class="nx">text</span>
+</span><span class='line'><span class="nx">_start</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="nx">$0</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nb">int</span> <span class="nx">$0x80</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The <code>rax</code> and <code>rbx</code> are both <a href="https://en.wikipedia.org/wiki/Processor_register">general purporse registers</a>. The <code>int</code> instruction is a <strong>interruption</strong>. When we use the 0x80 code, we are saying that this interruption must be handled by the linux operating system. In another words, we are performing a <a href="https://en.wikipedia.org/wiki/System_call">system call</a>. The code of the system call is stored in the <code>rax</code> register. The <code>1</code> is the code for the <strong>exit</strong> system call. The <strong>exit</strong> system call takes one parameter, the return value, which is stored in the <code>rbx</code> register. In this case, we are returning the value <code>0</code>. By the way, the <code>$</code> is used to indicate constant values. If we omit it, it would be interpreted as a memory address instead.</p>
+
+<p>In C, the code we just typed would be equivalent to:</p>
+
+<figure class='code'><figcaption><span>main.c</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>You can turn it into a executable code by calling:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>as main.s -o main.o
+</span><span class='line'>ld main.o -o main
+</span><span class='line'>./main
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But a program like that is of no use, right? So let&rsquo;s create our factorial function. Functions in assembly are a kind of a headache, because you need to explicitally manipulate the stack.</p>
+
+<h2>The stack</h2>
+
+<p><strong>Stack</strong> is a contiguous region of memory reserved for the program by the operating system.</p>
+
+<p><img src="https://www.cs.umd.edu/class/sum2003/cmsc311/Notes/Mips/Figs/stack1.png" alt="" /></p>
+
+<p>There&rsquo;s a special register called <code>rsp</code> (stack pointer) that points to the &lsquo;top&rsquo; of the stack. So how do we store things in the stack? By simply using <code>mov</code> instruction and manipulating the stack pointer. For example, let&rsquo;s suppose we want to store two values in the stack, <code>1</code>  and <code>2</code>. It could be accomplished that way:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="nx">sub</span> <span class="nx">$16</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'><span class="nx">mov</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'><span class="nx">mov</span> <span class="nx">$2</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'><span class="nx">mov</span> <span class="o">%</span><span class="nx">rax</span><span class="o">,</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rsp</span><span class="p">)</span>
+</span><span class='line'><span class="nx">mov</span> <span class="o">%</span><span class="nx">rbx</span><span class="o">,</span> <span class="mi">8</span><span class="p">(</span><span class="o">%</span><span class="nx">rsp</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Stack is a structure that grows upward, in the sense of it first begins with addresses of higher values and grows towards addresses of lower values. In the above example, we are using <strong>8</strong> bytes of the stack to store the value <code>1</code> and equally 8 bytes to store the value <code>2</code>, so we need to step down the stack pointer by a value of 16 (we use 8 bytes because on x64 architecture, the registers have 8 bytes. 8 x 8 = 64 bits).</p>
+
+<p>Since manipulating the stack pointer directly is boring, there are two special instructions to accomplish the same effect: <code>push</code> and <code>pop</code>. <code>push</code> subtracts the stack pointer by 8 and stores the parameter into the current address pointed by the stack pointer. <code>pop</code> moves the data stored in the address currently pointed by the stack pointer to a register and adds the stack pointer by 8.</p>
+
+<h2>Recursive factorial function</h2>
+
+<p>Create a file named <code>factorial.s</code>. Insert the following code:</p>
+
+<figure class='code'><figcaption><span>factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span><span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>  
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We use the <code>globl</code> directive because we want the <strong>factorial</strong> label to be visible to other programs (we want to use the function in other programs). Here&rsquo;s the first trick: &ldquo;Calling&rdquo; a function is simply jumping to the memory address where this function is defined.</p>
+
+<p>The new thing here is the <code>type</code> directive. Don&rsquo;t worry, it&rsquo;s just a directive to indicate that the label is not a common label but actually a function.</p>
+
+<p>Now let&rsquo;s go back to our main program and call this function:</p>
+
+<figure class='code'><figcaption><span>main.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">_start</span>
+</span><span class='line'><span class="p">.</span><span class="nx">section</span> <span class="p">.</span><span class="nx">text</span>
+</span><span class='line'><span class="nx">_start</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="nx">$5</span>
+</span><span class='line'>  <span class="nx">call</span> <span class="nx">factorial</span>
+</span><span class='line'>  <span class="nx">add</span> <span class="nx">$8</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rax</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'>  <span class="nb">int</span> <span class="nx">$0x80</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This may seem complicated at the first glance, but it&rsquo;s rather simple. We first store the value <code>5</code> in the stack. Since we cannot pass arguments directly while calling the function like in other languages, we need to store the arguments in the stack. In this case, 5 will be first the argument for the <code>factorial</code> function: The number we want to calculate the factorial.</p>
+
+<p>After that, we use the <code>call</code> instruction. What the <code>call</code> instruction actually does is just storing the current address into the stack pointer (because we need to know to where return after the function has been finished!) and jumping to the <code>factorial</code> label.</p>
+
+<p>Finally, we increase the stack pointer (because we no longer need the function parameters stored in the stack, we can safely override them to prevent <em>memory leaks</em>) and move the function return (the function return is, by convenction, always stored in the <code>rax</code> register) to the <code>rbx</code> so we can display it after the program has been executed (through the echo $? command).</p>
+
+<p>Our main program is finished. It&rsquo;s roughly equivalent to the following C program:</p>
+
+<figure class='code'><figcaption><span>main.c</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">factorial</span><span class="p">(</span><span class="kt">int</span><span class="p">);</span>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">factorial</span><span class="p">(</span><span class="mi">5</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now let&rsquo;s focus on our factorial function.
+The very first thing we need to do in a function is to store the <code>rbp</code> register. <code>rbp</code> is the base pointer register. It points to the beginning of the current <strong>stack frame</strong>. Stack frame is the region of stack where we stored our function parameters and function return address. Since we can call functions inside functions, we need to store the &lsquo;context&rsquo; of the previous function call (if any).</p>
+
+<figure class='code'><figcaption><span>factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span><span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rsp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbp</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We move the current stack pointer to the <code>rbp</code> register. Now we are within the context of the current function. Let&rsquo;s retrieve the arguments:</p>
+
+<figure class='code'><figcaption><span>factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span><span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rsp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rbp</span><span class="p">)</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span> <span class="err">#</span> <span class="nx">Get</span> <span class="nx">the</span> <span class="nx">first</span> <span class="nx">parameter</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Remember: We use <code>rbp + 16</code> because we pushed the parameter value into the stack first (the second pushed value was the function return address, therefore it stands on top).</p>
+
+<p>Since we are implementing the recursive version, we first need to define the recursion base: If the parameter value is less or equal than 1, return 1.</p>
+
+<figure class='code'><figcaption><span>factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span><span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rsp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rbp</span><span class="p">)</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span> <span class="err">#</span> <span class="nx">Get</span> <span class="nx">the</span> <span class="nx">first</span> <span class="nx">parameter</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Check</span> <span class="nx">recursion</span> <span class="nx">base</span>
+</span><span class='line'>  <span class="nx">cmp</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nx">je</span> <span class="nx">factorial_base</span>
+</span><span class='line'><span class="nx">factorial_base</span><span class="o">:</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Return</span> <span class="nx">value</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'><span class="nx">factorial_end</span><span class="o">:</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Restore</span> <span class="nx">pointer</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rbp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'>  <span class="nx">pop</span> <span class="o">%</span><span class="nx">rbp</span> <span class="err">#</span> <span class="nx">Restore</span> <span class="nx">context</span>
+</span><span class='line'>  <span class="nx">ret</span> <span class="err">#</span> <span class="nx">Return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Wow, a lot of things happened here! Let&rsquo;s calmly analyze each one of them. First, we compare the parameter value to one (through the <code>cmp</code> instruction). Then, we check if the parameter value is equal than one. If so, we jump to the <code>factorial_base</code> label. This <strong>conditional jump</strong> is accomplished by the <code>je</code> instruction (jump on equal). The <code>cmp</code> instruction sets a flag on <code>flags</code> register, which the <strong>conditional jump</strong> will look up to decide if it will jump or not.</p>
+
+<p>Once within the <code>factorial_base</code> label, we move the value <code>1</code> into the <code>rax</code> register. The <code>rax</code> will store the final value of our calculation. The program flow will then move automatically to the label right below, <code>factorial_end</code>.</p>
+
+<p>The <code>factorial_end</code> label will restore the stack pointer to where it was when the function was called (in case we have manipulated it inside the function body, which we didn&rsquo;t, but it&rsquo;s a good pratice to keep our code generic) and will then restore the base pointer register. Finally, there&rsquo;s this <code>ret</code> instruction, which will return to the value currently pointed by the stack pointer (the function return address).</p>
+
+<p>Now let&rsquo;s implement the recursive calls:</p>
+
+<figure class='code'><figcaption><span>factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span><span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rsp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rbp</span><span class="p">)</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span> <span class="err">#</span> <span class="nx">Get</span> <span class="nx">the</span> <span class="nx">first</span> <span class="nx">parameter</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Check</span> <span class="nx">recursion</span> <span class="nx">base</span>
+</span><span class='line'>  <span class="nx">cmp</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nx">je</span> <span class="nx">factorial_base</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Decrease</span> <span class="nx">the</span> <span class="nx">value</span> <span class="nx">of</span> <span class="nx">parameter</span>
+</span><span class='line'>  <span class="nx">dec</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Call</span> <span class="nx">factorial</span> <span class="nx">recursively</span>
+</span><span class='line'>  <span class="nx">push</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nx">call</span> <span class="nx">factorial</span>
+</span><span class='line'>  <span class="nx">add</span> <span class="nx">$8</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Multiply</span> <span class="nx">the</span> <span class="nx">current</span> <span class="nx">parameter</span> <span class="nx">by</span> <span class="nx">the</span> <span class="nx">recursive</span> <span class="nx">call</span> <span class="k">return</span> <span class="nx">value</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rbp</span><span class="p">)</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>  <span class="nx">imul</span> <span class="o">%</span><span class="nx">rbx</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Finish</span> <span class="kd">function</span>
+</span><span class='line'>  <span class="nx">jmp</span> <span class="nx">factorial_end</span>
+</span><span class='line'><span class="nx">factorial_base</span><span class="o">:</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Return</span> <span class="nx">value</span> <span class="mi">1</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'><span class="nx">factorial_end</span><span class="o">:</span>
+</span><span class='line'>  <span class="err">#</span> <span class="nx">Restore</span> <span class="nx">pointer</span>
+</span><span class='line'>  <span class="nx">mov</span> <span class="o">%</span><span class="nx">rbp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'>  <span class="nx">pop</span> <span class="o">%</span><span class="nx">rbp</span> <span class="err">#</span> <span class="nx">Restore</span> <span class="nx">context</span>
+</span><span class='line'>  <span class="nx">ret</span> <span class="err">#</span> <span class="nx">Return</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>After we checked our recursion base condition (and failed), we decremented the value of the parameter in order to pass it as argument to the same function again (through the <code>decl</code> instruction). The way of calling the same function is identical to the code we wrote on our main program: We push the arguments into the stack and call the <code>call</code> instruction.</p>
+
+<p>Once the recursive function has been finished, its return value is stored in the <code>rax</code> register. Before multiplying the current parameter by the return value of the recursive call, we first need to restore its original value (remember: When we made recursive call, it was overrided). We accomplish it by calling: <code>mov 16(%rbp), %rbx</code>. We then multiply the value of <code>rbx</code> by <code>rax</code> and store the result in <code>rax</code> through the <code>imul</code> instruction. After it, we jump to the end of our function (<code>factorial_end</code>).</p>
+
+<p>That&rsquo;s it! Not that hard, right? Take of time to ensure you have understood every piece of our code.</p>
+
+<p>The above code is roughly equivalent to the following C code:</p>
+
+<figure class='code'><figcaption><span>factorial.c</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">factorial</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">n</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">n</span> <span class="o">*</span> <span class="n">factorial</span><span class="p">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>hehe, Assembly is such a pain. :)</p>
+
+<h2>Generating executable code</h2>
+
+<p>Now let&rsquo;s generate our executable code. First, let&rsquo;s generate <a href="https://en.wikipedia.org/wiki/Object_code">object code</a> from our both assembly programs:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>as main.s -o main.o
+</span><span class='line'>as factorial.s -o factorial.o
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Let&rsquo;s link our two object codes into a single executable code:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>ld main.o factorial.o -o main
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now execute:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'>./main
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We can check our program return by calling:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='bash'><span class='line'><span class="nb">echo</span> <span class="nv">$?</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>A value of <code>120</code> must have prompted, that is the factorial of 5.</p>
+
+<p>It&rsquo;s worth noting that if we omit the <code>.globl factorial</code> in <code>factorial.s</code>, the linker would prompt an error, since it cannot resolve the symbol.</p>
+
+<h2>Iterative factorial function</h2>
+
+<p>The factorial function can also be implemented in a single loop. Observe the following C code:</p>
+
+<figure class='code'><figcaption><span>iterative_factorial.c</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+</pre></td><td class='code'><pre><code class='c'><span class='line'><span class="kt">int</span> <span class="nf">factorial</span><span class="p">(</span><span class="kt">int</span> <span class="n">n</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="n">i</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">n</span> <span class="o">*=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">i</span><span class="o">--</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="n">n</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Since the program is bigger in C than the previous version, we may think that it would be even more complex in Assembly than the previous Assembly program. However, it&rsquo;s actually simpler:</p>
+
+<figure class='code'><figcaption><span>iterative_factorial.s</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='as'><span class='line'><span class="p">.</span><span class="nx">section</span> <span class="p">.</span><span class="nx">text</span>
+</span><span class='line'><span class="p">.</span><span class="nx">globl</span> <span class="nx">factorial</span>
+</span><span class='line'><span class="p">.</span><span class="nx">type</span> <span class="nx">factorial</span><span class="o">,</span> <span class="err">@</span><span class="kd">function</span>
+</span><span class='line'><span class="nx">factorial</span><span class="o">:</span>
+</span><span class='line'>        <span class="nx">push</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>        <span class="nx">mov</span> <span class="o">%</span><span class="nx">rsp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>        <span class="nx">mov</span> <span class="mi">16</span><span class="p">(</span><span class="o">%</span><span class="nx">rsp</span><span class="p">)</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'>        <span class="nx">mov</span> <span class="o">%</span><span class="nx">rax</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>        <span class="nx">dec</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>        <span class="nx">jmp</span> <span class="nx">factorial_loop</span>
+</span><span class='line'><span class="nx">factorial_loop</span><span class="o">:</span>
+</span><span class='line'>        <span class="nx">cmp</span> <span class="nx">$1</span><span class="o">,</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>        <span class="nx">je</span> <span class="nx">factorial_end</span>
+</span><span class='line'>        <span class="nx">imul</span> <span class="o">%</span><span class="nx">rbx</span><span class="o">,</span> <span class="o">%</span><span class="nx">rax</span>
+</span><span class='line'>        <span class="nx">dec</span> <span class="o">%</span><span class="nx">rbx</span>
+</span><span class='line'>        <span class="nx">jmp</span> <span class="nx">factorial_loop</span>
+</span><span class='line'><span class="nx">factorial_end</span><span class="o">:</span>
+</span><span class='line'>        <span class="nx">mov</span> <span class="o">%</span><span class="nx">rbp</span><span class="o">,</span> <span class="o">%</span><span class="nx">rsp</span>
+</span><span class='line'>        <span class="nx">pop</span> <span class="o">%</span><span class="nx">rbp</span>
+</span><span class='line'>        <span class="nx">ret</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>We copy the parameter value to the <code>rbx</code> register. It will exercise the same function of the <code>i</code> variable in the C code. We then decrease the value of i and then jump to the loop.</p>
+
+<p>On our loop, we compare the value of <code>rbx</code> (i) to one. If it&rsquo;s equal, we exit our loop. Otherwise, we multiply <code>rbx</code> by <code>rax</code> and store the result in <code>rax</code>. In the end, we return to the beginning of our loop.</p>
+
+<h2>Conclusion</h2>
+
+<p>Well, well&hellip; We learnt important Assembly concepts in this tutorial: System calls, the stack, functions&hellip; It&rsquo;s a lot! You already are able to implement some other simple algorithms (try Fibonacci!).</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2016-02-21T17:08:47-03:00'><span class='date'><span class='date-month'>Feb</span> <span class='date-day'>21</span><span class='date-suffix'>st</span>, <span class='date-year'>2016</span></span> <span class='time'>5:08 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/assembly/'>assembly</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+        <a class="basic-alignment left" href="/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/" title="Previous Post: Is it a cat or a dog? A neural network application in OpenCV">&laquo; Is it a cat or a dog? A neural network application in OpenCV</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/02/27/mixing-assembly-and-c/" title="Next Post: Mixing Assembly and C">Mixing Assembly and C &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

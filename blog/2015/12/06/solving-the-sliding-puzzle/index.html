@@ -1,0 +1,1440 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Solving the Sliding Puzzle - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="Sliding puzzle is a game composed by 2n - 1 pieces dispersed along a board and a blank space. Those pieces are then shuffled and the objective is to &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Solving the Sliding Puzzle</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T17:01:05-03:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:01 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><script src="/js/sliding-puzzle/minheap.js"></script>
+
+
+<script src="/js/sliding-puzzle/sliding-puzzle.js"></script>
+
+
+<script src="/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
+
+
+<p><link href="/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
+
+<p>Sliding puzzle is a game composed by 2<sup>n</sup> - 1 pieces dispersed along a board and a blank space. Those pieces are then shuffled and the objective is to rearrange them back to their original form, where the disposition of pieces is on ascending order, like shown below (go on, it&rsquo;s interactive):</p>
+
+<center>
+    <div>
+        <div id="container-a-example" class="puzzle"></div>
+    </div>
+</center>
+
+
+<p></p>
+
+<script type="text/javascript">
+    new PuzzleGUI($("#container-a-example"), 4, 50, 5, 100, 10, Algorithm.AManhattan);
+</script>
+
+
+<p>You can rearrange the pieces &ldquo;moving&rdquo; the blank space across the board. Since you can only move it in four directions, it&rsquo;s a hell of a task to solve this game for a human, sometimes taking hours. Luckily, we dispose of some good algorithms to solve it, taking only few milliseconds even for the worst case. Let&rsquo;s explore them in this tutorial! :)</p>
+
+<!-- more -->
+
+
+<h2>Finding the correct abstraction</h2>
+
+<p>The hardest part of a problem is surely finding a useful abstraction for it, that allows a solution to be even thought! Like most path finding problems, the sliding puzzle can be correctly abstracted as a <strong>graph</strong>, i.e., a set of vertices connected by edges.</p>
+
+<p>It&rsquo;s common to use the term &ldquo;<strong>state</strong>&rdquo; to designate vertices. The meaning of a state depends on the problem. For example, for the sliding puzzle, each state is a determined disposition of pieces. Logically, there&rsquo;s also a &ldquo;<strong>goal state</strong>&rdquo;, a state where the problem is solved. Finally, the edges are the allowed actions that takes our problem from a state to another. For example, in the sliding puzzle, the set of allowed actions is to move the blank space in four directions (up, down, left, right). The figure below illustrates well those concepts.</p>
+
+<p style="text-align:center;"><img src="http://www.ibm.com/developerworks/library/j-ai-search/figure06.png" alt="" /></p>
+
+<p>Assimilated those concepts, our job is simply to find a path from any state to the goal state, and that can be done with any graph search algorithm. Let&rsquo;s discuss the pros/cons of some approaches.</p>
+
+<h2>Javascript implementation of Sliding Puzzle</h2>
+
+<p>Before discussing about specific algorithms, let&rsquo;s implement the building blocks. I&rsquo;ll start with a class called &ldquo;Puzzle&rdquo;, containing basically four attributes: dimension (dimension of our puzzle, i.e., 3 = 8-puzzle, 4 = 15-puzzle, etc.,&hellip;), the board (two-dimensional numeric array), the path and the last performed move (we will cover those last two later).</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="kd">function</span> <span class="nx">Puzzle</span><span class="p">(</span><span class="nx">dimension</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">=</span> <span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+</span><span class='line'>  <span class="c1">// Fill the board</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">.</span><span class="nx">push</span><span class="p">([]);</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">j</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">dimension</span> <span class="o">*</span> <span class="nx">i</span> <span class="o">+</span> <span class="nx">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<p>Let&rsquo;s create some utilitary methods that will help during the craft of our solution:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Get the (x, y) position of the blank space</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">return</span> <span class="p">[</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Swap two items on a bidimensional array</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">swap</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">i1</span><span class="p">,</span> <span class="nx">j1</span><span class="p">,</span> <span class="nx">i2</span><span class="p">,</span> <span class="nx">j2</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">temp</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i1</span><span class="p">][</span><span class="nx">j1</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i1</span><span class="p">][</span><span class="nx">j1</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i2</span><span class="p">][</span><span class="nx">j2</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i2</span><span class="p">][</span><span class="nx">j2</span><span class="p">]</span> <span class="o">=</span> <span class="nx">temp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And finally, let&rsquo;s implement the methods that will move the pieces:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Direction</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">LEFT</span><span class="o">:</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">RIGHT</span><span class="o">:</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">UP</span><span class="o">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">DOWN</span><span class="o">:</span> <span class="s2">&quot;dow&quot;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Return the direction that a piece can be moved, if any</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getMove</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">blankSpacePosition</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span><span class="p">();</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">column</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">line</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="nx">column</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">DOWN</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">line</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="nx">column</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">UP</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">column</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="p">][</span><span class="nx">column</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">RIGHT</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">column</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="p">][</span><span class="nx">column</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">LEFT</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Move a piece, if possible, and return the direction that it was moved</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">move</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">move</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getMove</span><span class="p">(</span><span class="nx">piece</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">blankSpacePosition</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span><span class="p">();</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">column</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">switch</span> <span class="p">(</span><span class="nx">move</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">LEFT</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">column</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">RIGHT</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">column</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">UP</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">column</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">DOWN</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">column</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span> <span class="o">=</span> <span class="nx">piece</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">move</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<h2>Breadth-First Search (BFS)</h2>
+
+<p>The most well-known graph search algorithm, along with Depth-First Search (DFS). I believe you are already familiarized with this algorithm. It works really simple: For each visited node, its immediate children are stored on a queue, and it&rsquo;s performed recursively until the queue is empty or a goal state is reached, that way transversing the graph &ldquo;level-by-level&rdquo;.</p>
+
+<p>In order to implement the BFS, we are going to need first two method beforehand: &ldquo;<strong>isGoalState</strong>&rdquo; and &ldquo;<strong>visit</strong>&rdquo;. The &ldquo;isGoalState&rdquo; will check if the current state is a solution to the puzzle, while &ldquo;visit&rdquo; will generate the immediate children of the current state in the state space.</p>
+
+<p>Let&rsquo;s start with &ldquo;isGoalState&rdquo;. Well, it&rsquo;s kinda simple: We are in a goal state if all pieces are in their places. The original place of a piece can be defined as <code>[(piece - 1) % dimension, (piece - 1) / dimension]</code>. Let&rsquo;s take some examples to check if this formule makes sense:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">piece</span> <span class="o">=</span> <span class="mi">1</span>
+</span><span class='line'><span class="nx">dimension</span> <span class="o">=</span> <span class="mi">3</span> <span class="p">(</span><span class="mi">8</span><span class="o">-</span><span class="nx">puzzle</span><span class="p">)</span>
+</span><span class='line'><span class="nx">original</span> <span class="nx">place</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">3</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">piece</span> <span class="o">=</span> <span class="mi">7</span>
+</span><span class='line'><span class="nx">dimension</span> <span class="o">=</span> <span class="mi">4</span> <span class="p">(</span><span class="mi">15</span><span class="o">-</span><span class="nx">puzzle</span><span class="p">)</span>
+</span><span class='line'><span class="nx">original</span> <span class="nx">place</span> <span class="o">=</span> <span class="p">[(</span><span class="mi">7</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="mi">4</span><span class="p">,</span> <span class="p">(</span><span class="mi">7</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">4</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Seems correct so far. That way our method is as follows:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">isGoalState</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">!=</span> <span class="nx">originalLine</span> <span class="o">||</span> <span class="nx">j</span> <span class="o">!=</span> <span class="nx">originalColumn</span><span class="p">)</span> <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>About the &ldquo;visit&rdquo; method, first we need to know all allowed moves we can do in a certain state. For example, if the blank space is on the bottom-left of screen, we may not be able to move down nor left. Luckily, this functionality is already implemented through the method &ldquo;getMove&rdquo; described on previous section.</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Return all current allowed moves</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getAllowedMoves</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">allowedMoves</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">getMove</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="nx">allowedMoves</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">piece</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">allowedMoves</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>But knowing the allowed moves is not enough. We need to generate new states. In order to do that, we are going to need an utilitary method that makes a copy of the current state:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="c1">// Return a copy of current puzzle</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getCopy</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">newPuzzle</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Puzzle</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="nx">newPuzzle</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">newPuzzle</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="p">]);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">newPuzzle</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Notice that we are not just copying the board, but also the path. &ldquo;path&rdquo; is an attribute that stores the pieces that were moved so far, that way allowing us to reexecute the whole process when a goal state is found.</p>
+
+<p>And now we can finally implement it:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">visit</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">children</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">allowedMoves</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getAllowedMoves</span><span class="p">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">allowedMoves</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span>  <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">move</span> <span class="o">=</span> <span class="nx">allowedMoves</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">newInstance</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCopy</span><span class="p">();</span>
+</span><span class='line'>          <span class="nx">newInstance</span><span class="p">.</span><span class="nx">move</span><span class="p">(</span><span class="nx">move</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">newInstance</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">move</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">children</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">newInstance</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">children</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Notice that we are ignoring moves that are equal to &ldquo;lastMove&rdquo;. There&rsquo;s a reason behind it: Moving a piece that was already moved on the last turn will only make it to turn back to its original position! In another words, going back to a state that was already explored. That why we are &ldquo;prunning&rdquo; the tree avoiding this kind of behavior.</p>
+
+<p>*sigh* After all those necessary things, we are now ready to finally implement the BFS algorithm, that is ridiculously simple:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveBFS</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">startingState</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCopy</span><span class="p">();</span>
+</span><span class='line'>  <span class="nx">startingState</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="p">[</span><span class="nx">startingState</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="nx">states</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">state</span> <span class="o">=</span> <span class="nx">states</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="nx">states</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">isGoalState</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">path</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="nx">states</span> <span class="o">=</span> <span class="nx">states</span><span class="p">.</span><span class="nx">concat</span><span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">visit</span><span class="p">());</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>We create an array called &ldquo;states&rdquo; to store the states that are waiting to be visited and put the current state on it. On a loop, we remove the first element (through the &ldquo;shift&rdquo; method, remember we are simulating a queue) and then check if that element is a goal state. If it is, return the sets of steps from our initial state until it (the &ldquo;path&rdquo; attribute), otherwise visit it and append the immediate children to the list of states.</p>
+
+<p><strong>*BONUS*</strong>! You can check a simulation below:</p>
+
+<center>
+    <h3>BFS</h3>
+    <div>
+        <div id="container-bfs" class="puzzle"></div>
+        <br>
+        Time elapsed: <span id="elapsed">0</span>ms
+        <br>
+        <button id="shuffle">Shuffle</button>
+        <button id="solve">Solve</button>
+    </div>
+</center>
+
+
+
+
+<script type="text/javascript">
+    new PuzzleGUI($("#container-bfs"), 4, 50, 5, 100, 10, Algorithm.BFS);
+</script>
+
+
+<p><strong>PRO</strong>: It&rsquo;s easy to be implemented.<br>
+<strong>CON</strong>: Waaaaaaay too slow.</p>
+
+<h2>A*</h2>
+
+<p>As we saw previously, the BFS can correctly find an optimal solution to our problem, i.e., find a path from the starting state to the goal state with the minimum number of steps, but it has a huge drawback: it&rsquo;s too slow! If you shuffle the game too much and try to run it, it will possibly freeze your browser.</p>
+
+<p>So here&rsquo;s the A*, the top #1 favorite algorithm for problem solving agents, and, good for us, it&rsquo;s pretty simple too!</p>
+
+<p>It works similarly to BFS, but with some differences: Instead of a queue, we use a priority queue (a.k.a., min-heap), that is a data structure that instead of returning the first element added, it returns the element with lowest value. And, to each discovered state, we assign a value to it, that can be defined as:</p>
+
+<p>f(n) = g(n) + h(n)</p>
+
+<p>g(n) (called <strong>real cost function</strong>) is the cost necessary to go from the starting state to the state n. Since we already discovered the whole path to it, we can easily calculate that cost with precision (for our sliding puzzle example, that cost can be represented as the path length, for example).</p>
+
+<p>h(n) (called <strong>heuristic function</strong>) is the estimated cost to go from the state n to the goal state. But here&rsquo;s the trick: We don&rsquo;t know the path from state n to the goal state yet! It&rsquo;s called <em>heuristic</em> precisely because we use heuristics to estimate it.</p>
+
+<p>For priority-queue implementation, I&rsquo;m going to use that you can you find <a href="http://www.digitaltsunami.net/projects/javascript/minheap/index.html">here</a>.</p>
+
+<p>Let&rsquo;s start initializing the algorithm:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveA</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">MinHeap</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">a</span><span class="p">.</span><span class="nx">distance</span> <span class="o">-</span> <span class="nx">b</span><span class="p">.</span><span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span><span class="o">:</span> <span class="k">this</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="mi">0</span><span class="p">});</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, on a loop, we are going to retrieve the items with lowest value until the &ldquo;states&rdquo; variable is empty or a goal state is reached.</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveA</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">MinHeap</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">a</span><span class="p">.</span><span class="nx">distance</span> <span class="o">-</span> <span class="nx">b</span><span class="p">.</span><span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span><span class="o">:</span> <span class="k">this</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="mi">0</span><span class="p">});</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="nx">states</span><span class="p">.</span><span class="nx">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">state</span> <span class="o">=</span> <span class="nx">states</span><span class="p">.</span><span class="nx">pop</span><span class="p">().</span><span class="nx">puzzle</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">isGoalState</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">path</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And finally, we are going to visit the retrieved state&rsquo;s children, calculate their weights and insert them into the queue.</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveA</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">MinHeap</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">a</span><span class="p">.</span><span class="nx">distance</span> <span class="o">-</span> <span class="nx">b</span><span class="p">.</span><span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span><span class="o">:</span> <span class="k">this</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="mi">0</span><span class="p">});</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="nx">states</span><span class="p">.</span><span class="nx">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">state</span> <span class="o">=</span> <span class="nx">states</span><span class="p">.</span><span class="nx">pop</span><span class="p">().</span><span class="nx">puzzle</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">isGoalState</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">path</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">children</span> <span class="o">=</span> <span class="nx">state</span><span class="p">.</span><span class="nx">visit</span><span class="p">();</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">children</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">child</span> <span class="o">=</span> <span class="nx">children</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">f</span> <span class="o">=</span> <span class="nx">child</span><span class="p">.</span><span class="nx">g</span><span class="p">()</span> <span class="o">+</span> <span class="nx">child</span><span class="p">.</span><span class="nx">h</span><span class="p">();</span>
+</span><span class='line'>          <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span> <span class="o">:</span> <span class="nx">child</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="nx">f</span><span class="p">});</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Good, good. Now let&rsquo;s implement the &ldquo;g&rdquo; and &ldquo;h&rdquo; functions. For &ldquo;g&rdquo; function, I&rsquo;ll simply count the path length (what else could be considered as the real cost?):</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">g</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The heuristic function is the tricky part. We could think in many things. It&rsquo;s important the heuristic be <strong>admissible</strong>, i.e., it must underestimate the real cost until the goal state. The closer the estimated value by heuristic function is to the real cost to go to the goal state, the better.</p>
+
+<h3>Heuristic #1: Misplaced tiles</h3>
+
+<p>This function counts simply the number of pieces(tiles) that are not in their final position. This function is almost identical to the one we implemented to check if a state is the goal:</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">h</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">!=</span> <span class="nx">originalLine</span> <span class="o">||</span> <span class="nx">j</span> <span class="o">!=</span> <span class="nx">originalColumn</span><span class="p">)</span> <span class="nx">count</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>    
+</span><span class='line'>  <span class="k">return</span> <span class="nx">count</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<center>
+    <h3>A*: Misplaced tiles</h3>
+    <div>
+        <div id="container-a-misplaced" class="puzzle"></div>
+        <br>
+        Time elapsed: <span id="elapsed">0</span>ms
+        <br>
+        <button id="shuffle">Shuffle</button>
+        <button id="solve">Solve</button>
+    </div>
+</center>
+
+
+<p></p>
+
+<script type="text/javascript">
+    new PuzzleGUI($("#container-a-misplaced"), 4, 50, 5, 100, 10, Algorithm.AMisplaced);
+</script>
+
+
+<h3>Heuristic #2: Manhattan distance</h3>
+
+<p>Instead of just counting the number of misplaced tiles, this heuristic function calculates the manhattan distance (L1 distance) between the current misplaced position and the final position. Manhattan distance can be calculated as:</p>
+
+<p>d(x1, y1, x2, y2) = |x1 - x2| + |y1 - y2|</p>
+
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">h</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">distance</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="nx">distance</span> <span class="o">+=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">i</span> <span class="o">-</span> <span class="nx">originalLine</span><span class="p">)</span> <span class="o">+</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">j</span> <span class="o">-</span> <span class="nx">originalColumn</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>    
+</span><span class='line'>  <span class="k">return</span> <span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p></p>
+
+<center>
+    <h3>A*: Manhattan distance</h3>
+    <div>
+        <div id="container-a-manhattan" class="puzzle"></div>
+        <br>
+        Time elapsed: <span id="elapsed">0</span>ms
+        <br>
+        <button id="shuffle">Shuffle</button>
+        <button id="solve">Solve</button>
+    </div>
+</center>
+
+
+<p></p>
+
+<script type="text/javascript">
+    new PuzzleGUI($("#container-a-manhattan"), 4, 50, 5, 100, 10, Algorithm.AManhattan);
+</script>
+
+
+<p>This heuristic is obviously better than the previous, since it always yields a higher value and hence closer to the real cost.</p>
+
+<h2>Full code</h2>
+
+<p>You can get the full code here:</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<figure class='code'><figcaption><span>sliding-puzzle.js</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+<span class='line-number'>231</span>
+<span class='line-number'>232</span>
+<span class='line-number'>233</span>
+</pre></td><td class='code'><pre><code class='javascript'><span class='line'><span class="nx">Direction</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">LEFT</span><span class="o">:</span> <span class="s2">&quot;left&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">RIGHT</span><span class="o">:</span> <span class="s2">&quot;right&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">UP</span><span class="o">:</span> <span class="s2">&quot;up&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">DOWN</span><span class="o">:</span> <span class="s2">&quot;dow&quot;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Algorithm</span> <span class="o">=</span> <span class="p">{</span>
+</span><span class='line'>  <span class="nx">BFS</span><span class="o">:</span> <span class="s2">&quot;BFS&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">AMisplaced</span><span class="o">:</span> <span class="s2">&quot;A*: Misplaced tiles&quot;</span><span class="p">,</span>
+</span><span class='line'>  <span class="nx">AManhattan</span><span class="o">:</span> <span class="s2">&quot;A*: Manhattan distance&quot;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="kd">function</span> <span class="nx">Puzzle</span><span class="p">(</span><span class="nx">dimension</span><span class="p">,</span> <span class="nx">solve_func</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">=</span> <span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">solve_func</span> <span class="o">=</span> <span class="nx">solve_func</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span> <span class="o">=</span> <span class="kc">null</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">.</span><span class="nx">push</span><span class="p">([]);</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">j</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">].</span><span class="nx">push</span><span class="p">(</span><span class="nx">dimension</span> <span class="o">*</span> <span class="nx">i</span> <span class="o">+</span> <span class="nx">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Get the (x, y) position of the blank space</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="k">return</span> <span class="p">[</span><span class="nx">i</span><span class="p">,</span> <span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Swap two items on a bidimensional array</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">swap</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">i1</span><span class="p">,</span> <span class="nx">j1</span><span class="p">,</span> <span class="nx">i2</span><span class="p">,</span> <span class="nx">j2</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">temp</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i1</span><span class="p">][</span><span class="nx">j1</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i1</span><span class="p">][</span><span class="nx">j1</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i2</span><span class="p">][</span><span class="nx">j2</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i2</span><span class="p">][</span><span class="nx">j2</span><span class="p">]</span> <span class="o">=</span> <span class="nx">temp</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Return the direction that a piece can be moved, if any</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getMove</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">blankSpacePosition</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span><span class="p">();</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">column</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">line</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="nx">column</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">DOWN</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">line</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="o">+</span><span class="mi">1</span><span class="p">][</span><span class="nx">column</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">UP</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">column</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="p">][</span><span class="nx">column</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">RIGHT</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="nx">column</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">&amp;&amp;</span> <span class="nx">piece</span> <span class="o">==</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">line</span><span class="p">][</span><span class="nx">column</span><span class="o">+</span><span class="mi">1</span><span class="p">])</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">LEFT</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Move a piece, if possible, and return the direction that it was moved</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">move</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">move</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getMove</span><span class="p">(</span><span class="nx">piece</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">blankSpacePosition</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getBlankSpacePosition</span><span class="p">();</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">line</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">column</span> <span class="o">=</span> <span class="nx">blankSpacePosition</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">switch</span> <span class="p">(</span><span class="nx">move</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">LEFT</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">column</span> <span class="o">+</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">RIGHT</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span><span class="p">,</span> <span class="nx">column</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">UP</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">column</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">case</span> <span class="nx">Direction</span><span class="p">.</span><span class="nx">DOWN</span><span class="o">:</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">swap</span><span class="p">(</span><span class="nx">line</span><span class="p">,</span> <span class="nx">column</span><span class="p">,</span> <span class="nx">line</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nx">column</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span> <span class="o">=</span> <span class="nx">piece</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">move</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">isGoalState</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">!=</span> <span class="nx">originalLine</span> <span class="o">||</span> <span class="nx">j</span> <span class="o">!=</span> <span class="nx">originalColumn</span><span class="p">)</span> <span class="k">return</span> <span class="kc">false</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="kc">true</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Return a copy of current puzzle</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getCopy</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">newPuzzle</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">Puzzle</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="nx">newPuzzle</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">]</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="nx">newPuzzle</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">[</span><span class="nx">i</span><span class="p">]);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">newPuzzle</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="c1">// Return all current allowed moves</span>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getAllowedMoves</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">allowedMoves</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">getMove</span><span class="p">(</span><span class="nx">piece</span><span class="p">)</span> <span class="o">!=</span> <span class="kc">null</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="nx">allowedMoves</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">piece</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">allowedMoves</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">visit</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">children</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">allowedMoves</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getAllowedMoves</span><span class="p">();</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">allowedMoves</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span>  <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">move</span> <span class="o">=</span> <span class="nx">allowedMoves</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">move</span> <span class="o">!=</span> <span class="k">this</span><span class="p">.</span><span class="nx">lastMove</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">newInstance</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCopy</span><span class="p">();</span>
+</span><span class='line'>          <span class="nx">newInstance</span><span class="p">.</span><span class="nx">move</span><span class="p">(</span><span class="nx">move</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">newInstance</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">move</span><span class="p">);</span>
+</span><span class='line'>          <span class="nx">children</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">newInstance</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">children</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveBFS</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">startingState</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">getCopy</span><span class="p">();</span>
+</span><span class='line'>  <span class="nx">startingState</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="p">[</span><span class="nx">startingState</span><span class="p">];</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="nx">states</span><span class="p">.</span><span class="nx">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">state</span> <span class="o">=</span> <span class="nx">states</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="nx">states</span><span class="p">.</span><span class="nx">shift</span><span class="p">();</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">isGoalState</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">path</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="nx">states</span> <span class="o">=</span> <span class="nx">states</span><span class="p">.</span><span class="nx">concat</span><span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">visit</span><span class="p">());</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">g</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">path</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">getManhattanDistance</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">distance</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="nx">distance</span> <span class="o">+=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">i</span> <span class="o">-</span> <span class="nx">originalLine</span><span class="p">)</span> <span class="o">+</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">abs</span><span class="p">(</span><span class="nx">j</span> <span class="o">-</span> <span class="nx">originalColumn</span><span class="p">);</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">countMisplaced</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">j</span> <span class="o">&lt;</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span> <span class="nx">j</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">piece</span> <span class="o">=</span> <span class="k">this</span><span class="p">.</span><span class="nx">board</span><span class="p">[</span><span class="nx">i</span><span class="p">][</span><span class="nx">j</span><span class="p">];</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalLine</span> <span class="o">=</span> <span class="nb">Math</span><span class="p">.</span><span class="nx">floor</span><span class="p">((</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">);</span>
+</span><span class='line'>              <span class="kd">var</span> <span class="nx">originalColumn</span> <span class="o">=</span> <span class="p">(</span><span class="nx">piece</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">%</span> <span class="k">this</span><span class="p">.</span><span class="nx">dimension</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">if</span> <span class="p">(</span><span class="nx">i</span> <span class="o">!=</span> <span class="nx">originalLine</span> <span class="o">||</span> <span class="nx">j</span> <span class="o">!=</span> <span class="nx">originalColumn</span><span class="p">)</span> <span class="nx">count</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>    
+</span><span class='line'>  <span class="k">return</span> <span class="nx">count</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">h</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">solve_func</span> <span class="o">==</span> <span class="nx">Algorithm</span><span class="p">.</span><span class="nx">AMisplaced</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">countMisplaced</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">getManhattanDistance</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solveA</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="kd">var</span> <span class="nx">states</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">MinHeap</span><span class="p">(</span><span class="kc">null</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="nx">b</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="nx">a</span><span class="p">.</span><span class="nx">distance</span> <span class="o">-</span> <span class="nx">b</span><span class="p">.</span><span class="nx">distance</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">});</span>
+</span><span class='line'>  <span class="k">this</span><span class="p">.</span><span class="nx">path</span> <span class="o">=</span> <span class="p">[];</span>
+</span><span class='line'>  <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span><span class="o">:</span> <span class="k">this</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="mi">0</span><span class="p">});</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="nx">states</span><span class="p">.</span><span class="nx">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">state</span> <span class="o">=</span> <span class="nx">states</span><span class="p">.</span><span class="nx">pop</span><span class="p">().</span><span class="nx">puzzle</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="nx">state</span><span class="p">.</span><span class="nx">isGoalState</span><span class="p">())</span> <span class="p">{</span>
+</span><span class='line'>          <span class="k">return</span> <span class="nx">state</span><span class="p">.</span><span class="nx">path</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="kd">var</span> <span class="nx">children</span> <span class="o">=</span> <span class="nx">state</span><span class="p">.</span><span class="nx">visit</span><span class="p">();</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kd">var</span> <span class="nx">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="nx">i</span> <span class="o">&lt;</span> <span class="nx">children</span><span class="p">.</span><span class="nx">length</span><span class="p">;</span> <span class="nx">i</span><span class="o">++</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">child</span> <span class="o">=</span> <span class="nx">children</span><span class="p">[</span><span class="nx">i</span><span class="p">];</span>
+</span><span class='line'>          <span class="kd">var</span> <span class="nx">f</span> <span class="o">=</span> <span class="nx">child</span><span class="p">.</span><span class="nx">g</span><span class="p">()</span> <span class="o">+</span> <span class="nx">child</span><span class="p">.</span><span class="nx">h</span><span class="p">();</span>
+</span><span class='line'>          <span class="nx">states</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="nx">puzzle</span> <span class="o">:</span> <span class="nx">child</span><span class="p">,</span> <span class="nx">distance</span><span class="o">:</span> <span class="nx">f</span><span class="p">});</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span><span class='line'>
+</span><span class='line'><span class="nx">Puzzle</span><span class="p">.</span><span class="nx">prototype</span><span class="p">.</span><span class="nx">solve</span> <span class="o">=</span> <span class="kd">function</span><span class="p">()</span> <span class="p">{</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="k">this</span><span class="p">.</span><span class="nx">solve_func</span> <span class="o">==</span> <span class="nx">Algorithm</span><span class="p">.</span><span class="nx">BFS</span><span class="p">)</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">solveBFS</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+</span><span class='line'>      <span class="k">return</span> <span class="k">this</span><span class="p">.</span><span class="nx">solveA</span><span class="p">();</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">};</span>
+</span></code></pre></td></tr></table></div></figure> 
+</div>
+
+
+<p></input></p>
+
+<p>And since this page itself is utilizing this code for demonstration, you can also get it visualizing the source code.</p>
+
+<h2>Conclusion</h2>
+
+<p>Well, that was a quite interesting tutorial. We discussed about <strong>space of states</strong>, <strong>goal state</strong>, <strong>graph search algorithms</strong>, <strong>A*</strong> and <strong>admissible heuristics</strong>. I hope you have enjoyed reading this tutorial as much as I did writing it. See ya on the next tutorial! :D</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-12-06T17:01:05-03:00'><span class='date'><span class='date-month'>Dec</span> <span class='date-day'>6</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>5:01 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/ai/'>ai</a>, <a class='category' href='/blog/categories/algorithms/'>algorithms</a>, <a class='category' href='/blog/categories/tutorials/'>tutorials</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+        <a class="basic-alignment left" href="/blog/2015/11/15/fingertip-detection-on-opencv/" title="Previous Post: Fingertip detection in OpenCV">&laquo; Fingertip detection in OpenCV</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/" title="Next Post: Is it a cat or a dog? A neural network application in OpenCV">Is it a cat or a dog? A neural network application in OpenCV &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

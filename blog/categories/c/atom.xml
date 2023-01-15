@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: C | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/c/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Mixing Assembly and C]]></title>
+    <link href="http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
+    <updated>2016-02-27T10:24:56-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
+    <content type="html"><![CDATA[<p>In many applications, mixing Assembly and C is routine (pun intended). There are many reasons for it, but, in general, you want to use Assembly when you want to deal with the hardware directly or perform a task with maximum speed and minimum use of resources, while you use C to perform some high level stuffs that don&rsquo;t attend the former requirements. In either case, you&rsquo;ll need one integrated system.</p>
+
+<p>There are three ways to mix Assembly and C:</p>
+
+<ul>
+<li>Using Assembly-defined functions into C</li>
+<li>Using C-defined functions into Assembly</li>
+<li>Using Assembly code in C</li>
+</ul>
+
+
+<p>We&rsquo;ll explore them all in this tutorial.</p>
+
+<!-- more --> 
+
+
+<h2>Using Assembly-defined functions in C</h2>
+
+<p>Let&rsquo;s first take the example of a function that takes no parameters and doesn&rsquo;t return anything, like one that just prints something on screen.</p>
+
+<pre><code class="as hello_world.s">.globl hello_world
+.type hello_world, @function 
+.section .data
+message: .ascii "Hello, World!\n"
+length: .quad . - message
+.section .text
+hello_world:
+    mov $1, %rax
+    mov $1, %rdi
+    mov $message, %rsi
+    mov length, %rdx
+    syscall
+    ret
+</code></pre>
+
+<p>(If you don&rsquo;t quite understand the above syntax, read my <a href="http://localhost:4000/blog/2016/02/21/factorial-function-in-assembly/">previous tutorial</a>)</p>
+
+<p>Now let&rsquo;s create a C program to call this function:</p>
+
+<pre><code class="c hello_world.c">extern void hello_world();
+
+int main() 
+{
+    hello_world();
+    return 0;
+}
+</code></pre>
+
+<p>Notice the use of <code>extern</code> keyword. It tells the compiler that the definition of a given function or variable is defined in somewhere else other than the current file. It&rsquo;s the <strong>linker</strong> job to connect this declaration with the actual definition.</p>
+
+<p>Now let&rsquo;s compile and link our both programs at the same time in order to obtain an executable file:</p>
+
+<pre><code class="bash ">gcc hello_world.c hello_world.s -o hello_world
+</code></pre>
+
+<p>That&rsquo;s all! Pretty easy, right? Now let&rsquo;s advance to a more challenging scenario: A function that returns a value. As I said on previous tutorial, by convention, Assembly functions return values on <code>AX</code> register. This is also true for C programs. Check out this example:</p>
+
+<pre><code class="as return_10.s">.globl return_10
+.type return_10, @function 
+return_10:
+    movl $10, %eax
+    ret
+</code></pre>
+
+<p>This function only puts the value &lsquo;10&rsquo; into the EAX register. Now on C side:</p>
+
+<pre><code class="c return_10.c">#include &lt;stdio.h&gt;
+
+extern int return_10();
+
+int main() 
+{
+    printf("%d\n", return_10());
+}
+</code></pre>
+
+<p>It&rsquo;s worth noting that, on Assembly side, I&rsquo;m moving a two words value into the EAX register. I could move a four words value to the RAX register instead, but it would print 0. Why? Here&rsquo;s the reason:</p>
+
+<p style="text-align:center;"><img src="http://nullprogram.com/img/x86/register.png" alt="" /></p>
+
+<p>As you may know, RAX is the 64 bits version of the AX register, hence it can store 64 bits simultaneously. Those bits are stored from left to right, i.e., let&rsquo;s suppose we move the decimal value &lsquo;10&rsquo; into the RAX register. It would appear that way:</p>
+
+<p>01010000000000&hellip;0 (0101 + 60 zeroes).</p>
+
+<p>The EAX holds the 32 most significant bits (the lower half), therefore, if I access this sequence through EAX, I would only see zero values! And this is what the <code>int</code> datatype is implicitly converted to, since it&rsquo;s a datatype with size equals to 32 bits. In order to avoid this problem, I should either stick with EAX, EBX&hellip; registers or use <code>long int</code> on C side.</p>
+
+<blockquote><p>Lesson learnt: One must check if the size of registers match the size of types in C.</p></blockquote>
+
+<p>Now the last scenario: A function that takes parameters and returns a value, like that one that returns the sum of two values:</p>
+
+<pre><code class="c sum.c">#include &lt;stdio.h&gt;
+
+extern int sum(int, int);
+
+int main() 
+{
+    printf("%d\n", sum(2, 3));
+    return 0;
+}
+</code></pre>
+
+<p>Now the Assembly definition:</p>
+
+<pre><code class="as sum.as">.globl sum
+.type sum, @function
+sum:
+    addl %edi, %esi
+    movl %esi, %eax
+    ret
+</code></pre>
+
+<p>You may be asking: Hey, what&rsquo;s wrong? Why am I using the <code>edi</code> and <code>esi</code> registers?</p>
+
+<p>Here&rsquo;s the trick: In GCC compiler, instead of the parameters being pushed into the stack by the callee to be read from the calling function, they are stored in registers. It&rsquo;s the calling function job to push them into the stack if they need to. Those registers are used in the following order:</p>
+
+<ul>
+<li>_di: Holds the first argument</li>
+<li>_si: Holds the second argument</li>
+<li>_dx: Holds the third argument</li>
+<li>_cx: Holds the fourth argument</li>
+<li>r8d: Holds the fifth argument</li>
+<li>r9d: Holds the sixth argument</li>
+</ul>
+
+
+<p>And so on&hellip; In the above example, the value <code>2</code> is stored in the <code>edi</code> register and the value <code>3</code> is stored in the <code>esi</code> register. Therefore, we simply sum them (through the <code>addl</code> instruction) and move the result to <code>eax</code> register.</p>
+
+<h2>Using C-defined functions into Assembly</h2>
+
+<p>Here&rsquo;s the first example: Using the <code>printf</code> C function into Assembly:</p>
+
+<pre><code class="as hello_world.s">.extern printf
+.globl main
+.section .data
+message: .ascii "Hello, World!\n"
+format: .ascii "%s"
+.section .text
+main:
+    mov $format, %rdi
+    mov $message, %rsi
+    mov $0, %rax
+    call printf
+    ret
+</code></pre>
+
+<p>Now compile the Assembly program with GCC:
+<code>bash
+gcc hello_world.s -o hello_world
+</code></p>
+
+<p>The GCC will automatically link with the function definition. In the same way we used the <code>extern</code> keyword in C, we use the <code>.extern</code> directive to tell the Assembler that <code>printf</code> is defined externally.</p>
+
+<p>That is equivalent to the following C program:</p>
+
+<pre><code class="c hello_world.c">#include &lt;stdio.h&gt;
+
+int main() 
+{
+    return printf("%s", "Hello, World!\n");
+}
+</code></pre>
+
+<p>When compiling Assembly programs with GCC, the starting symbol is no longer <code>_start</code> but <code>main</code>. <code>main</code> is a function, therefore it must have the <code>ret</code> instruction in the end of it.</p>
+
+<p>The <code>printf</code> in C takes two or more parameters: The format and the value(s). As said previously, the first parameters goes to <code>rdi</code> register while the second parameter goes to <code>rsi</code> register. Note: Before calling the function, the value of <code>rax</code> must be zero!</p>
+
+<p>Our second example is using the <code>scanf</code> function. Like <code>printf</code>,  it takes two more parameters: The format and the destinating addresses where the standard input will be stored. Note: The second and so on parameters are no longer values, but memory addresses (pointers).</p>
+
+<pre><code class="as example_scanf.s">.extern scanf
+.globl main
+.section .data
+a: .double 0
+b: .double 0
+format: .ascii "%d %d"
+.section .text
+main:
+    mov $format, %rdi
+    mov $a, %rsi
+    mov $b, %rdx
+    mov $0, %rax
+    call scanf
+    movl a, %eax
+    movl b, %ebx
+    addl %ebx, %eax
+    ret
+</code></pre>
+
+<p>First, we declare three &ldquo;variables&rdquo; in data section:</p>
+
+<ul>
+<li>a: A two words (32 bits) region of memory that initially stores the value zero;</li>
+<li>b: A two words (32 bits) region of memory that initially stores the value zero;</li>
+<li>format: A region of memory that stores the ASCII string &ldquo;%d %d&rdquo;.</li>
+</ul>
+
+
+<p>We then pass the address of <code>format</code> as first parameter, the address of <code>a</code> as second parameter and the address of <code>b</code> as third parameter. Before calling <code>scanf</code>, we set <code>RAX</code> to 0 (just like in the printf example). After it, we move the value stored in <code>a</code> address to <code>eax</code> register and the value stored in <code>b</code> address to <code>ebx</code> register. We then sum them both and store the result in <code>eax</code>.</p>
+
+<p>After executing the program, if we echo the program execution status:</p>
+
+<pre><code class="bash">echo $?
+</code></pre>
+
+<p>We&rsquo;ll able to see the sum of both typed numbers.</p>
+
+<p>The above example is equivalent to the following C program:</p>
+
+<pre><code class="c example_scanf.c">#include &lt;stdio.h&gt;
+
+int main() 
+{
+    int a = 0;
+    int b = 0;
+    char* format = "%d %d";
+    scanf(format, &amp;a, &amp;b);
+    return a + b;
+}
+</code></pre>
+
+<h2>Using Assembly code in C</h2>
+
+<p>Our third category is pretty straight-forward. See the example:</p>
+
+<pre><code class="c sum.c">#include &lt;stdio.h&gt;
+
+int sum(int a, int b) 
+{
+    asm("addl %edi, %esi");
+    asm("movl %esi, %eax");
+}
+
+int main() 
+{
+    printf("%d\n", sum(2, 3));
+    return 0;
+}
+</code></pre>
+
+<p>Now you can compile it normally:</p>
+
+<pre><code class="bash">gcc sum.c -o sum
+</code></pre>
+
+<p>The compiler will simply insert the assembly code in the appropriated place in the compiled code.</p>
+
+<h2>Conclusion</h2>
+
+<p>We&rsquo;ve just learnt very very powerful tools! Learning how to mix Assembly and C give us a deep insight of how the C compiler actually works. I strongly recommend <a href="https://assembly.ynh.io/">this website</a> for further learning. Play with it around, try some snippets, and see how it&rsquo;s translated into Assembly.</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,1472 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Games | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/games/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[(Java) Hashboom]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/28/java-hashboom/"/>
+    <updated>2014-09-28T15:19:25-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/28/java-hashboom</id>
+    <content type="html"><![CDATA[<p>Here&rsquo;s some fool game I made some time ago in an attempt to learn about Swing. Have fun!</p>
+
+<p style="text-align:center;"><img src="/images/posts/hashboom.png" alt="" /></p>
+
+<p style="text-align:center;"><a href="/downloads/code/Hashboom.jar">Click here to download</a></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PyInvaders]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
+    <updated>2014-09-27T12:16:32-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
+    <content type="html"><![CDATA[<p>The last game of terminal games series, this time a copy of Space Invaders.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pyinvaders.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/05364c4b67d5ed265871.js?file=PyInvaders.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PyInvaders v3.1
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import time, os, platform, random, sys, select
+
+class GameObject(object):
+    def __init__(self, life, x, y, char):
+        self.life = life
+        self.x = x
+        self.y = y
+        self.char = char
+    def getX(self):
+        return self.x
+    def getY(self):
+        return self.y
+    def getChar(self):
+        return self.char
+    def getLife(self):
+        return self.life
+    def setX(self, x):
+        self.x = x
+    def setY(self, y):
+        self.y = y
+    def damage(self):
+        self.life -= 1
+    def dead(self):
+        return self.life &lt;= 0
+    
+class Game(object):
+    def __init__(self):
+        self.new_game()
+    def new_game(self):
+        self.spacecraft = GameObject(3, 13, 8, &quot;^&quot;)
+        self.aliens = []
+        self.create_aliens()
+        self.walls = []
+        self.create_walls()
+        self.shoots = []
+        self.shoots_aliens = []
+        self.terrain = []
+        self.create_terrain()
+        self.score = 0
+        self.cooldown = False
+        self.start_screen = False
+        self.mode_screen = False
+        self.difficulty = 0
+    def create_aliens(self):
+        for x in range(5):
+            for y in range(10):
+                alien = GameObject(5-x, x+1, 4+y, &quot;@&quot;)
+                self.aliens.append(alien)
+    def create_walls(self):
+        for i in range(4):
+            wall = GameObject(1, 12, 3+i*3, &quot;~&quot;)
+            self.walls.append(wall)
+    def create_terrain(self):
+        for x in range(15):
+            self.terrain.append([])
+            for y in range(15):
+                self.terrain[-1].append(&quot; &quot;)
+    def clear_terrain(self):
+        for x in range(15):
+            for y in range(15):
+                self.terrain[x][y] = &quot; &quot;
+    def draw_spacecraft(self):
+        self.terrain[self.spacecraft.getX()][self.spacecraft.getY()] = self.spacecraft.getChar()
+    def find_alien(self, x, y):
+        for i in range(len(self.aliens)):
+            alien = self.aliens[i]
+            if alien.getX() == x and alien.getY() == y:
+                return i
+    def find_wall(self, x, y):
+        for i in range(len(self.walls)):
+            wall = self.walls[i]
+            if wall.getX() == x and wall.getY() == y:
+                return i
+    def destroy_shoot(self, i):
+        self.shoots.pop(i)
+    def draw_shoots(self):
+        for i in range(len(self.shoots) - 1, -1, -1):
+            shoot = self.shoots[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            a = self.find_alien(x, y)
+            if a != None:
+                self.aliens[a].damage()
+                if self.aliens[a].dead():
+                    self.aliens.pop(a)
+                    self.score += 10
+                self.destroy_shoot(i)
+            else:
+                if x &gt; 0:
+                    shoot.setX(x - 1)
+                else:
+                    self.destroy_shoot(i)
+        for shoot in self.shoots:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def destroy_shoot_aliens(self, i):
+        self.shoots_aliens.pop(i)
+    def alien_shoot(self):
+        x = random.randint(0, len(self.aliens)-1)
+        alien = self.aliens[x]
+        shoot = GameObject(1, alien.getX()+1, alien.getY(), &quot;:&quot;)
+        self.shoots_aliens.append(shoot)
+    def draw_shoots_aliens(self):
+        if int(time.localtime().tm_sec) % (4-self.difficulty) == 0:
+            self.alien_shoot()
+        for i in range(len(self.shoots_aliens) - 1, -1, -1):
+            shoot = self.shoots_aliens[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            m = self.find_wall(x, y)
+            if m != None:
+                self.walls[m].damage()
+                if self.walls[m].dead():
+                    self.walls.pop(m)
+                self.destroy_shoot_aliens(i)
+            elif x == self.spacecraft.getX() and y == self.spacecraft.getY():
+                self.spacecraft.damage()
+                if self.spacecraft.dead():
+                    self.game_over()
+                self.destroy_shoot_aliens(i)
+            else:
+                if x &lt; 14:
+                    shoot.setX(x + 1)
+                else:
+                    self.destroy_shoot_aliens(i)
+        for shoot in self.shoots_aliens:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def draw_aliens(self):
+        for alien in self.aliens:
+            self.terrain[alien.getX()][alien.getY()] = alien.getChar()
+    def draw_walls(self):
+        for wall in self.walls:
+            self.terrain[wall.getX()][wall.getY()] = wall.getChar()
+    def draw_terrain(self):
+        for x in range(15):
+            print &quot;&quot;.join(self.terrain[x])
+    def update(self):
+        if int(time.localtime().tm_sec) % self.difficulty == 0:
+            self.cooldown = False
+        print (&quot;SCORE&lt;%d&gt;&quot; % self.score).center(20)
+        self.clear_terrain()
+        self.draw_spacecraft()
+        self.draw_shoots()
+        self.draw_shoots_aliens()
+        self.draw_aliens()
+        self.draw_walls()
+        self.draw_terrain()
+        print (&quot;LIVES: %d&quot; % self.spacecraft.getLife()).center(20)
+        if len(self.aliens) == 0:
+            self.win()
+            return False 
+        elif self.spacecraft.dead():
+			return False 
+        return True 
+    def move_right(self):
+        if self.spacecraft.getY() &lt; 14:
+            self.spacecraft.setY(self.spacecraft.getY() + 1)
+    def move_left(self):
+        if self.spacecraft.getY() &gt; 0:
+            self.spacecraft.setY(self.spacecraft.getY() - 1)
+    def shoot(self):
+        if not self.cooldown:
+            shoot = GameObject(1, 12, self.spacecraft.getY(), &quot;|&quot;)
+            self.shoots.append(shoot)
+            self.cooldown = True
+    def game_over(self):
+        clear_screen()
+        print &quot;GAME OVER!!&quot;
+        time.sleep(3)
+    def win(self):
+        clear_screen()
+        print &quot;YOU ROCK!!&quot;
+        time.sleep(3)
+    def is_start_screen(self):
+        return self.start_screen
+    def start(self):
+        if not self.mode_screen:
+            print &quot;&quot;&quot;
+                              ##          ##
+                                ##      ##           
+                              ##############
+                            ####  ######  ####
+                          ######################
+                          ##  ##############  ##        
+                          ##  ##          ##  ##
+                                ####  ####
+                                    ##
+                                  ##
+                                    ##
+                                      ##
+                                    ##
+                                  ##
+                                    ## &quot;&quot;&quot;
+            print &quot;\n&quot;
+            print &quot;PYINVADERS&quot;.center(70)
+            print &quot;========= CREATED BY: =========&quot;.center(70)
+            print &quot;ABNER MATHEUS (abner.math.c@gmail.com)&quot;.center(70)
+            print &quot;\n&quot;
+            print &quot;PRESS &#39;N&#39; TO START A NEW GAME OR &#39;ESC&#39; TO EXIT GAME.&quot;.center(70)
+        else:
+            if self.difficulty == 0:
+                print &quot;&quot;&quot;DIFFICULTY:
+1. EASY
+2. AVERAGE
+3. HARD
+
+===================================
+GAME CONTROLS:
+===================================
+&#39;A&#39; AND &#39;D&#39; TO MOVE THE SPACECRAFT.
+&#39;S&#39; TO SHOOT.
+                &quot;&quot;&quot;
+            else:
+                self.start_screen = True
+    def new(self):
+        self.mode_screen = True
+    def set_difficulty(self, n):
+        self.difficulty = n
+       
+def clear_screen():
+	if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+	else: os.system(&quot;clear&quot;) 
+	
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, key):
+			event = key.keysym.lower()
+			if event == &quot;escape&quot;:
+				self.console.destroy()
+			elif event == &quot;d&quot;:
+				self.game.move_right()
+			elif event == &quot;a&quot;:
+				self.game.move_left()
+			elif event == &quot;s&quot;:
+				self.game.shoot()
+			elif event == &quot;n&quot;:
+				self.game.new()
+			elif event == &quot;1&quot;:
+				self.game.set_difficulty(1)
+			elif event == &quot;2&quot;:
+				self.game.set_difficulty(2)
+			elif event == &quot;3&quot;:
+				self.game.set_difficulty(3)
+			return True
+		def loop(self): 
+			clear_screen()
+			if not self.game.is_start_screen():
+				self.game.start()
+			else:
+				if not self.game.update():
+						self.game = Game()
+			self.console.after(250, self.loop)
+		def start_game(self):
+			self.game.start()
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(250, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+	
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+	 
+	class Controller:
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, nbc):
+			event = str(nbc.get_data())
+			if event == &#39;\x1b&#39;:
+				return False
+			elif event == &quot;d&quot;:
+				self.game.move_right()
+			elif event == &quot;a&quot;:
+				self.game.move_left()
+			elif event == &quot;s&quot;:
+				self.game.shoot()
+			elif event == &quot;n&quot;:
+				self.game.new()
+			elif event == &quot;1&quot;:
+				self.game.set_difficulty(1)
+			elif event == &quot;2&quot;:
+				self.game.set_difficulty(2)
+			elif event == &quot;3&quot;:
+				self.game.set_difficulty(3)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(250/1000.0)
+				clear_screen()
+				if not self.game.is_start_screen():
+					self.game.start()
+				else:
+					if not self.game.update():
+						self.game = Game()
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()
+</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PyPac]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
+    <updated>2014-09-19T10:04:09-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
+    <content type="html"><![CDATA[<p>Here is another game of my series, this time about the classic Pacman.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pypac.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/892bf12a4a185721485f.js?file=PyPac.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------------
+# PyPac v1.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------------
+import time, os, platform, sys, select, math
+from random import randint
+from copy import copy
+ 
+&quot;&quot;&quot;
+Store a (x, y) coordinate of the terrain
+&quot;&quot;&quot;
+class Position:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y 
+ 
+&quot;&quot;&quot;
+Representates the terrain of the map.
+The terrain is a bidimensional matrix that is mapped through
+a string passed
+&quot;&quot;&quot;
+class Terrain:
+    GHOST = (Position(11, 4), Position(10, 6), Position(11, 6), Position(12, 6))
+    PACMAN = Position(10, 8)
+    GHOST_CHAR = &#39;^&#39;
+    GHOST_WEAKEN_CHAR = &#39;*&#39;
+    PACMAN_CHAR = &#39;@&#39;
+    BULLET = &#39;.&#39;
+    GREATER_BULLET = &#39;0&#39;
+    def __init__(self):
+        self.terrain = map(lambda x: list(x), &quot;&quot;&quot;
+  —————————————————— 
+ |○•••|••••••••|•••○|
+ |•——•|•——————•|•——•|
+ |•|••••••••••••••|•|
+—|•|•——•———-——•——•|•|—
+  •••••••|   |••••••  
+—|•|•——•——————•——•|•|—
+ |•|•••••• •••••••|•|
+ |•——•|•——————•|•——•|
+ |○•••|••••••••|•••○|
+  —————————————————— 
+&quot;&quot;&quot;.replace(&quot;•&quot;, Terrain.BULLET).replace(&quot;○&quot;, Terrain.GREATER_BULLET).replace(&quot;—&quot;, &quot;=&quot;).split(&quot;\n&quot;))
+    def is_blocked(self, position, direction):
+        try:
+            if position.x == 11 and position.y == 5 and direction == Direction.UPWARD: return False 
+            char = self.terrain[position.y][position.x] 
+            return char == &quot;|&quot; or char == &quot;=&quot; or char == &quot;-&quot;
+        except: return True
+    &quot;&quot;&quot;
+    Makes the pacman eats bullets and increment game score in process
+    &quot;&quot;&quot;
+    def eat(self, context, pacman):
+        position = self.terrain[pacman.position.y][pacman.position.x]
+        if position == Terrain.BULLET:
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 1 
+        elif position == Terrain.GREATER_BULLET: 
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 5  
+            return True
+        return False
+    &quot;&quot;&quot;
+    Verify is the terrain has no &#39;bullets&#39;
+    &quot;&quot;&quot;
+    def is_clear(self):
+        for line in self.terrain:
+            if &#39;.&#39; in line or &#39;0&#39; in line: return False
+        return True
+    @staticmethod
+    def clear_screen():
+        if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Render the terrain on the screen
+    &quot;&quot;&quot;
+    def render(self, pacman, ghosts):
+        Terrain.clear_screen()
+        matrix = []
+        for i in range(len(self.terrain)):
+            matrix.append(list(self.terrain[i]))
+        matrix[pacman.position.y][pacman.position.x] = Terrain.PACMAN_CHAR
+        for ghost in ghosts:
+            if ghost.is_weaken():
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_WEAKEN_CHAR
+            else:
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_CHAR
+        result = &quot;&quot;
+        for i in range(len(matrix)):
+            result += &quot;&quot;.join(matrix[i]) + &quot;\n&quot;
+        print(result)
+ 
+&quot;&quot;&quot;
+Enumerate the possible directions that a walkable can take
+&quot;&quot;&quot;
+class Direction:
+    FORWARD = 1
+    BACKWARD = 2
+    UPWARD = 3
+    DOWNWARD = 4
+ 
+&quot;&quot;&quot;
+Representates a walkable object in the map (ghost and pacman)
+&quot;&quot;&quot;
+class Walkable:
+    def __init__(self): pass
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Verify if given movement in a certain direction is possible
+    &quot;&quot;&quot;
+    def possible_movement(self, direction, terrain):
+        if direction == Direction.FORWARD:
+            return not terrain.is_blocked(Position(self.position.x + 1, self.position.y), direction)
+        elif direction == Direction.BACKWARD:
+            return not terrain.is_blocked(Position(self.position.x - 1, self.position.y), direction)
+        elif direction == Direction.UPWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y - 1), direction)
+        elif direction == Direction.DOWNWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y + 1), direction)
+    &quot;&quot;&quot;
+    Move the object toward its direction. Return false case the movement is not possible.
+    &quot;&quot;&quot;
+    def move(self, terrain):
+        if self.direction == Direction.FORWARD and self.position.x &gt;= len(terrain.terrain[self.position.y]) - 1:
+            self.position.x = 0
+        elif self.direction == Direction.BACKWARD and self.position.x &lt;= 0:
+            self.position.x = len(terrain.terrain[self.position.y]) - 1
+        elif self.possible_movement(self.direction, terrain): 
+            if self.direction == Direction.FORWARD:
+                self.position.x += 1
+            elif self.direction == Direction.BACKWARD:
+                self.position.x -= 1
+            elif self.direction == Direction.UPWARD:
+                self.position.y -= 1
+            elif self.direction == Direction.DOWNWARD:
+                self.position.y += 1
+        else: return False
+        return True
+ 
+&quot;&quot;&quot;
+Representates the ghosts in the map.
+A ghost is a walkable
+&quot;&quot;&quot;
+class Ghost(Walkable):
+    def __init__(self, number):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.GHOST[number])
+        self.isWeaken = False
+        self.direction = Direction.UPWARD
+    &quot;&quot;&quot;
+    Verify is ghost is weaken (frightened)
+    &quot;&quot;&quot;
+    def is_weaken(self):
+        return self.isWeaken
+    &quot;&quot;&quot;
+    Weaken the ghost, making it &#39;eatable&#39; by Pacman
+    &quot;&quot;&quot;
+    def weaken(self):
+        self.isWeaken = True
+    &quot;&quot;&quot;
+    Strengthen the ghost, making it dangerous to Pacman
+    &quot;&quot;&quot;
+    def strengthen(self):
+        self.isWeaken = False
+ 
+&quot;&quot;&quot;
+Representates the Pacman
+&quot;&quot;&quot;
+class Pacman(Walkable):
+    def __init__(self):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.PACMAN)
+        self.direction = Direction.FORWARD
+ 
+&quot;&quot;&quot;
+Main class of the game.
+It receives the input of the user and maps it to its state.
+&quot;&quot;&quot;
+class Game:
+    def __init__(self):
+        self.lives = 3
+        self.score = 0
+        self.level = 1
+        self.state = StateInitial(self)
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self):
+        self.state.loop()
+    &quot;&quot;&quot;
+    Set a direction of Pacman. Only work in StatePlaying.
+    &quot;&quot;&quot;
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+    &quot;&quot;&quot;
+    Start a new game.
+    &quot;&quot;&quot;
+    def start_new_game(self):
+        self.state.start_new_game()
+ 
+&quot;&quot;&quot;
+Superclass of states of a game
+&quot;&quot;&quot;
+class GameState:
+    def __init__(self): pass
+    def loop(self):  raise NotImplementedException()
+    def set_direction(self, direction): raise NotImplementedException()
+    def start_new_game(self): raise NotImplementedException()
+ 
+&quot;&quot;&quot;
+Initial screen of the game.
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.context.lives = 3
+        self.context.score = 0
+        self.context.level = 1
+    def loop(self): 
+        message = &quot;&quot;&quot;
+ ____  __ __  ____   ____    __ 
+|    \|  |  ||    \ /    |  /  ]   ──▒▒▒▒▒────▄████▄─────
+|  o  )  |  ||  o  )  o  | /  /    ─▒─▄▒─▄▒──███▄█▀──────
+|   _/|  ~  ||   _/|     |/  /     ─▒▒▒▒▒▒▒─▐████──█──█──
+|  |  |___, ||  |  |  _  /   \_    ─▒▒▒▒▒▒▒──█████▄──────
+|  |  |     ||  |  |  |  \     |   ─▒─▒─▒─▒───▀████▀─────
+|__|  |____/ |__|  |__|__|\____|
+                                
+GAME CONTROLS:
+-----------------------------
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39;, &#39;W&#39; TO MOVE.
+&#39;ESC&#39; TO EXIT GAME.
+-----------------------------
+ 
+CREATED BY:
+-----------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+        Terrain.clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StatePlaying(self.context) 
+ 
+class StateGameOver(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+    def loop(self): 
+        Terrain.clear_screen()
+        print(&quot;&quot;&quot;
+  ____   ____  ___ ___    ___       ___   __ __    ___  ____  
+ /    | /    ||   |   |  /  _]     /   \ |  |  |  /  _]|    \ 
+|   __||  o  || _   _ | /  [_     |     ||  |  | /  [_ |  D  )
+|  |  ||     ||  \_/  ||    _]    |  O  ||  |  ||    _]|    / 
+|  |_ ||  _  ||   |   ||   [_     |     ||  :  ||   [_ |    \ 
+|     ||  |  ||   |   ||     |    |     | \   / |     ||  .  \ 
+|___,_||__|__||___|___||_____|     \___/   \_/  |_____||__|\_|
+                                                              
+PRESS &#39;N&#39; TO START A NEW GAME.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+ 
+&quot;&quot;&quot;
+Main state of the game.
+Here is where the stuff happens.
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.start_new_level()
+    &quot;&quot;&quot;
+    Get the angle between two vectors.
+    &quot;&quot;&quot;
+    def __get_angle(self, w1, w2):
+        return math.degrees(math.atan2((w2.position.y - w1.position.y), (w2.position.x - w1.position.x)))
+    &quot;&quot;&quot;
+    Convert a given angle in a direction.
+    &quot;&quot;&quot;
+    def __get_direction(self, angle):
+        if 0 &lt;= angle &lt; 45:
+            return Direction.FORWARD
+        elif 45 &lt;= angle &lt; 135:
+            return Direction.UPWARD
+        elif 135 &lt;= angle &lt; 225:
+            return Direction.BACKWARD
+        elif 225 &lt;= angle &lt; 315:
+            return Direction.DOWNWARD
+        elif 315 &lt;= angle &lt; 360:
+            return Direction.FORWARD
+        return Direction.FORWARD
+    &quot;&quot;&quot;
+    Verify is two vectors are equal
+    &quot;&quot;&quot;
+    def __equals(self, p1, p2):
+        return p1.x == p2.x and p1.y == p2.y
+    &quot;&quot;&quot;
+    Verify if two ghosts occupies the same tile.
+    &quot;&quot;&quot;
+    def __contains_others(self, movingGhost):
+        for ghost in self.ghosts:
+            if ghost != movingGhost:
+                if self.__equals(ghost.position, movingGhost.position): return True
+        return False
+    &quot;&quot;&quot;
+    Move the ghosts through the map
+    &quot;&quot;&quot;
+    def __move_ghosts(self):
+        for ghost in self.ghosts:
+            if (self.count_loop % 2 == 0 or self.count_loop % 3) and ghost.is_weaken(): continue
+            if self.count_loop % 2 == 0 and not ghost.is_weaken(): continue
+            if self.__equals(ghost.position, Terrain.GHOST[0]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[1]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[2]):
+                ghost.turn(Direction.UPWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[3]):
+                ghost.turn(Direction.BACKWARD)    
+            else:
+                angle = self.__get_angle(ghost, self.pacman)
+                if ghost.is_weaken(): 
+                    angle += 180
+                ghost.turn(self.__get_direction(angle))
+            old_position = copy(ghost.position)
+            if ghost.direction == Direction.FORWARD:
+                forbidden_direction = Direction.BACKWARD
+            elif ghost.direction == Direction.BACKWARD:
+                forbidden_direction = Direction.FORWARD
+            elif ghost.direction == Direction.UPWARD:
+                forbidden_direction = Direction.DOWNWARD
+            elif ghost.direction == Direction.DOWNWARD:
+                forbidden_direction = Direction.UPWARD
+            count = 0 
+            while self.__equals(ghost.position, old_position) or self.__contains_others(ghost):
+                while True:
+                    ghost.direction = randint(1, 4) 
+                    if (ghost.possible_movement(ghost.direction, self.terrain) and ghost.direction != forbidden_direction) or count &gt; 100: break
+                    count += 1
+                ghost.move(self.terrain)
+    &quot;&quot;&quot;
+    Makes the Pacman eat (or being eaten) the ghosts, depending its state.
+    &quot;&quot;&quot;
+    def __eat_ghosts(self):
+        for i in range(len(self.ghosts)):
+            if self.__equals(self.ghosts[i].position, self.pacman.position):
+                if self.ghosts[i].is_weaken():
+                    self.ghosts[i].strengthen()
+                    self.ghosts[i].position = copy(Terrain.GHOST[i])
+                else:
+                    self.lose_live()
+    &quot;&quot;&quot;
+    Render the screen (terrain + info)
+    &quot;&quot;&quot;
+    def __render(self):
+        self.terrain.render(self.pacman, self.ghosts)
+        print(&quot;LIVES: %d    SCORE: %d    LEVEL: %d&quot; % (self.context.lives, self.context.score, self.context.level))
+    def loop(self): 
+        self.count_loop += 1
+        if self.terrain.is_clear():
+            print(&quot;&quot;&quot;
+CONGRATULATIONS! 
+A NEW LEVEL WILL START IN FEW SECONDS.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(1)
+            self.context.level += 1
+            self.start_new_level()
+        self.__move_ghosts()
+        self.pacman.move(self.terrain)
+        self.__eat_ghosts()
+        if self.countdown &gt; 0: self.countdown -= 1
+        else:
+            for ghost in self.ghosts: ghost.strengthen()
+        if self.terrain.eat(self, self.pacman):
+            for ghost in self.ghosts: ghost.weaken()
+            self.countdown = 15
+        self.__render()
+    def set_direction(self, direction):
+        if self.pacman.possible_movement(direction, self.terrain):
+            self.pacman.turn(direction)
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+    &quot;&quot;&quot;
+    Start a new level. On a new level, lives and points are mantained.
+    &quot;&quot;&quot;
+    def start_new_level(self):
+        self.terrain = Terrain()
+        self.pacman = Pacman()
+        self.ghosts = []
+        for i in range(4): self.ghosts.append(Ghost(i))
+        self.count_loop = 0
+        self.countdown = 0
+    &quot;&quot;&quot;
+    Makes Pacman lose a life. 
+    &quot;&quot;&quot;
+    def lose_live(self):
+        self.context.lives -= 1
+        if self.context.lives &lt;= 0:
+            self.context.state = StateGameOver(self.context)
+        else:
+            self.__render()
+            print(&quot;&quot;&quot;
+YOU LOST A LIVE.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(2)
+            self.pacman = Pacman()
+            self.pacman = Pacman()
+            self.ghosts = []
+            for i in range(4): self.ghosts.append(Ghost(i))
+            self.count_loop = 0
+            self.countdown = 0
+ 
+#---------------------------------
+# IO MANAGER
+#---------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		SPEED = 0.2
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, event):
+			key = event.keysym.lower()
+			if key == &quot;escape&quot;: #ESC
+				return False
+			elif key == &quot;n&quot;: #Enter
+				self.game.start_new_game()
+			elif key == &quot;d&quot;: #Right arrow
+				self.game.set_direction(Direction.FORWARD)
+			elif key == &quot;a&quot;: #Left arrow
+				self.game.set_direction(Direction.BACKWARD)
+			elif key == &quot;w&quot;: #Up arrow
+				self.game.set_direction(Direction.UPWARD)
+			elif key == &quot;s&quot;: #Down arrow
+				self.game.set_direction(Direction.DOWNWARD)
+			return True
+		def loop(self):
+			self.game.loop()   
+			self.console.after(250, self.loop)
+		def start_game(self):
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(250, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+ 
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+				
+	class Controller:
+		SPEED = 0.2
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, nbc):
+			key = str(nbc.get_data())
+			if key == &#39;\x1b&#39;: #ESC
+				return False
+			elif key == &#39;n&#39;: #Enter
+				self.game.start_new_game()
+			elif key == &#39;d&#39;: #Right arrow
+				self.game.set_direction(Direction.FORWARD)
+			elif key == &#39;a&#39;: #Left arrow
+				self.game.set_direction(Direction.BACKWARD)
+			elif key == &#39;w&#39;: #Up arrow
+				self.game.set_direction(Direction.UPWARD)
+			elif key == &#39;s&#39;: #Down arrow
+				self.game.set_direction(Direction.DOWNWARD)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(Controller.SPEED)
+				self.game.loop()   
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PySnake]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
+    <updated>2014-09-17T22:26:50-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
+    <content type="html"><![CDATA[<p>Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, like this one below:</p>
+
+<p style="text-align:center;"><img src="/images/posts/pysnake.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>You can get the source code below. Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/300f93a9820c52e6a243.js?file=PySnake.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PySnake v2.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import os, platform, time, sys, select
+from random import randint
+ 
+&quot;&quot;&quot;
+Enumerate the directions that a snake can take
+&quot;&quot;&quot;
+class Direction:
+    forward = 1
+    backward = 2
+    upward = 3
+    downward = 4
+ 
+&quot;&quot;&quot;
+Control the movement and position of a snake
+&quot;&quot;&quot;
+class Snake:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Turn the snake of direction
+    &quot;&quot;&quot;
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Move the snake toward its direction
+    Return false if the movement crossed the wall
+    &quot;&quot;&quot;
+    def move(self):
+        if self.direction == Direction.forward:
+            self.x += 1
+            if self.x &gt;= self.width:
+                self.x = 0
+                return False
+        elif self.direction == Direction.backward:
+            self.x -= 1
+            if self.x &lt; 0:
+                self.x = self.width - 1
+                return False
+        elif self.direction == Direction.upward:
+            self.y -= 1
+            if self.y &lt; 0:
+                self.y = self.height - 1
+                return False
+        elif self.direction == Direction.downward:
+            self.y += 1
+            if self.y &gt;= self.height:
+                self.y = 0 
+                return False
+        return True
+    &quot;&quot;&quot;
+    Change snake&#39;s direction and move it at the same time
+    &quot;&quot;&quot;
+    def turn_and_move(self, direction):
+        self.turn(direction)
+        return self.move() 
+ 
+&quot;&quot;&quot;
+Keep information of a terrain object (fruit or obstacles)
+&quot;&quot;&quot;
+class TerrainObject:
+    &quot;&quot;&quot;
+    Verify if given position if empty
+    &quot;&quot;&quot;
+    def __is_empty(self, x, y, context):
+        try:
+            for snake in context.snakes:
+                if snake.x == x and snake.y == y: return False
+            for obstacle in context.obstacles:
+                if obstacle.x == x and obstacle.y == y: return False
+            if context.fruit.x == x and context.fruit.y == y: return False
+        except AttributeError: pass
+        return True
+    &quot;&quot;&quot;
+    Build a object in a random place of the terrain
+    &quot;&quot;&quot;
+    def __init__(self, context):
+        while True:
+            x = randint(0, context.width - 1)
+            y = randint(0, context.height - 1)
+            if self.__is_empty(x, y, context): break
+        self.x = x
+        self.y = y
+    &quot;&quot;&quot;
+    Verify if the snake&#39;s head hit that object
+    &quot;&quot;&quot;
+    def hit(self, snake):
+        return self.x == snake.x and self.y == snake.y
+ 
+&quot;&quot;&quot;
+Keep information of the terrain
+&quot;&quot;&quot;
+class Terrain:
+    __WHITE_SPACE = &#39; &#39;
+    __SNAKE_BODY = &#39;0&#39;
+    __FRUIT = &#39;*&#39;
+    __OBSTACLE = &quot;~&quot;
+    __HOR_BOUND = &quot;-&quot;
+    __VER_BOUND = &quot;|&quot;
+    &quot;&quot;&quot;
+    Create a terrain of given width and height
+    &quot;&quot;&quot;
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Update terrain information using passed objects
+    &quot;&quot;&quot;
+    def __update(self, snakes, fruit, obstacles):
+        self.matrix = [] 
+        for i in range(self.height):
+            self.matrix.append([])
+            for j in range(self.width):
+                self.matrix[i].append(Terrain.__WHITE_SPACE)
+        self.matrix[fruit.y][fruit.x] = Terrain.__FRUIT
+        for snake in snakes:
+            self.matrix[snake.y][snake.x] = Terrain.__SNAKE_BODY
+        for obstacle in obstacles:
+            self.matrix[obstacle.y][obstacle.x] = Terrain.__OBSTACLE
+    &quot;&quot;&quot;
+    Return a string that shows a visual representation of the terrain
+    &quot;&quot;&quot;
+    def show(self, snakes, fruit, obstacles):
+        self.__update(snakes, fruit, obstacles)  
+        horizontal_bound = &quot;.&quot; + Terrain.__HOR_BOUND * (self.width) + &quot;.&quot; + &quot;\n&quot;
+        result = horizontal_bound
+        for line in self.matrix:
+            result += Terrain.__VER_BOUND + &quot;&quot;.join(line) + Terrain.__VER_BOUND + &quot;\n&quot;
+        result += horizontal_bound
+        return result
+ 
+&quot;&quot;&quot;
+Responsible to show elements in the screen
+&quot;&quot;&quot;
+class View:
+    LOGO = &quot;&quot;&quot;
+██████╗ ██╗   ██╗███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗
+██╔══██╗╚██╗ ██╔╝██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝
+██████╔╝ ╚████╔╝ ███████╗██╔██╗ ██║███████║█████╔╝ █████╗  
+██╔═══╝   ╚██╔╝  ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  
+██║        ██║   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗
+╚═╝        ╚═╝   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+&quot;&quot;&quot;
+    INITIAL = LOGO + &quot;&quot;&quot;
+ 
+GAME CONTROLS:
+=============================================================
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39; OR &#39;W&#39; KEYS TO MOVE THE SNAKE.
+ESC TO EXIT GAME.
+=============================================================
+ 
+CREATED BY: 
+-------------------------------------------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+    DIFFICULTY = LOGO + &quot;&quot;&quot;
+ 
+CHOOSE A DIFFICULTY BELOW:
+=============================================================
+1. VERY EASY
+2. MEDIUM
+3. HARD
+=============================================================
+ 
+OBJECTS:
+-------------------------------------------------------------
+* Fruit
+~ Obstacle
+&quot;&quot;&quot;
+    GAME_OVER = &quot;&quot;&quot;
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄  
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
+                                                     ░                   
+PRESS &#39;N&#39; TO START A NEW GAME.
+&quot;&quot;&quot;
+    def __init__(self, context):
+        self.context = context
+        self.terrain = Terrain(self.context.width, self.context.height)
+    &quot;&quot;&quot;
+    Render terrain and game information in the screen
+    &quot;&quot;&quot;
+    def render_context(self, context):
+	info = &quot;LIVES: %d          SCORE: %d&quot; % (self.context.lives, self.context.score) + &quot;\n&quot;
+        terrain = self.terrain.show(self.context.snakes, self.context.fruit, self.context.obstacles)
+        View.render(info + terrain)
+    &quot;&quot;&quot;&quot;
+    Clear the screen (platform dependent)
+    &quot;&quot;&quot;
+    @staticmethod
+    def __clear_screen():
+	if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Show a message in the screen
+    &quot;&quot;&quot;
+    @staticmethod
+    def render(message):
+        import sys
+        reload(sys)
+        sys.setdefaultencoding(&#39;utf-8&#39;)
+        View.__clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+ 
+&quot;&quot;&quot;
+Stores the actual state of the game (interface)
+&quot;&quot;&quot;
+class GameState:
+    def loop(self, controller): 
+        raise NotImplementedError()
+    def new_game(self): 
+        raise NotImplementedError()
+    def set_difficulty(self, difficulty): 
+        raise NotImplementedError()
+    def set_direction(self, direction):
+        raise NotImplementedError()
+ 
+&quot;&quot;&quot;
+Initial state of the game
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.INITIAL)
+    def new_game(self): 
+        self.context.state = StatePickDifficulty(self.context) 
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass 
+ 
+&quot;&quot;&quot;
+Pick difficulty screen
+&quot;&quot;&quot;
+class StatePickDifficulty(GameState):
+    def __init__(self, context):
+        self.context = context
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self, controller):
+        View.render(View.DIFFICULTY)
+    &quot;&quot;&quot;
+    Start a new game
+    &quot;&quot;&quot;
+    def new_game(self): 
+        self.context.state = StateInitial(self.context) 
+    &quot;&quot;&quot;
+    Set game difficulty
+    &quot;&quot;&quot;
+    def set_difficulty(self, difficulty):
+        self.context.difficulty = difficulty
+        self.context.state = StatePlaying(self.context)
+    &quot;&quot;&quot;
+    Change snake&#39;s direction
+    &quot;&quot;&quot;
+    def set_direction(self, direction): pass
+ 
+&quot;&quot;&quot;
+Here is where the game happens itself
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        self.context = context
+        self.width = self.context.width
+        self.height = self.context.height
+        self.lives = self.context.lives
+        self.score = 0 
+        self.view = View(self)
+        self.snakes = [Snake(self.width / 2, self.height / 2, self.width, self.height)] 
+        self.fruit = TerrainObject(self)
+        self.direction = Direction.forward 
+        self.direction_queue = [] 
+        self.snakes_queue = [] 
+        self.obstacles = [] 
+        number_of_obstacles = randint((context.difficulty - 1) * 2, (self.context.difficulty - 1) * 3)
+        for i in range(number_of_obstacles):
+            self.obstacles.append(TerrainObject(self))
+    &quot;&quot;&quot;
+    Stores snakes&#39; movement in a queue
+    &quot;&quot;&quot;
+    def __queue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].append(self.snakes[i-1].direction)
+    &quot;&quot;&quot;
+    Update the movement queue
+    &quot;&quot;&quot;
+    def __dequeue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].pop(0) 
+    &quot;&quot;&quot;
+    Check if snake&#39;s head hit some obstacle (including itself)
+    &quot;&quot;&quot;
+    def __hit_obstacle(self):
+        for i in range(1, len(self.snakes)):
+            if self.snakes[0].x == self.snakes[i].x and self.snakes[0].y == self.snakes[i].y:
+                return True
+        for obstacle in self.obstacles:
+            if self.snakes[0].x == obstacle.x and self.snakes[0].y == obstacle.y:
+                return True
+        return False
+    &quot;&quot;&quot;
+    Move all the snake parts towards its direction
+    &quot;&quot;&quot;
+    def __move(self):
+        for i in range(1, len(self.snakes)):
+            self.snakes[i].turn_and_move(self.direction_queue[i-1][0]) 
+        success = self.snakes[0].turn_and_move(self.direction)
+        if self.__hit_obstacle():
+            self.lives = 0
+            return False
+        return success 
+    &quot;&quot;&quot;
+    Makes the snake grow
+    &quot;&quot;&quot;
+    def __queue_growth(self):
+        x = self.snakes[0].x
+        y = self.snakes[0].y
+        self.snakes_queue.append(Snake(x, y, self.width, self.height)) 
+    &quot;&quot;&quot;
+    Check if snake left fruit position (so its new part can be appended)
+    &quot;&quot;&quot;
+    def __is_free(self, queued_snake): 
+        for existing_snake in self.snakes:
+            if existing_snake.x == queued_snake.x and existing_snake.y == queued_snake.y:
+                return False
+        return True 
+    &quot;&quot;&quot;
+    Append a snake&#39;s part that was in queue
+    &quot;&quot;&quot;
+    def __dequeue_growth(self):
+        for i in range(len(self.snakes_queue)-1,-1,-1):
+            if self.__is_free(self.snakes_queue[i]):
+                self.snakes.append(self.snakes_queue[i]) 
+                self.snakes_queue.pop(i) 
+                self.direction_queue.append([])
+    def loop(self, controller):
+        if controller.speed &gt; 40: 
+            controller.speed -= 1
+        if self.fruit.hit(self.snakes[0]):
+            self.fruit = TerrainObject(self)
+            self.score += 1
+            self.__queue_growth()
+        self.__queue_movement() 
+        if not self.__move():
+            self.lives -= 1
+            if self.lives &lt; 0: 
+                self.context.state = StateGameOver(self.context)
+                controller.speed = 300
+                return
+        self.__dequeue_movement() 
+        self.__dequeue_growth()
+        self.view.render_context(self) 
+    def new_game(self):
+        self.context.state = StateInitial(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction):
+        self.direction = direction
+ 
+&quot;&quot;&quot;
+Game over screen
+&quot;&quot;&quot;
+class StateGameOver(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.GAME_OVER)
+    def new_game(self):
+        self.context.state = StatePickDifficulty(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass
+ 
+class Game:
+    def __init__(self, width, height, lives):
+        self.width = width
+        self.height = height
+        self.lives = lives
+        self.state = StateInitial(self) 
+    def loop(self, controller):
+        self.state.loop(controller)
+    def new_game(self):
+        self.state.new_game()
+    def set_difficulty(self, difficulty):
+        self.state.set_difficulty(difficulty)
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+ 
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		def __init__(self):
+			self.game = Game(30, 15, 3) 
+			self.speed = 300 
+			self.start_game()
+		def press_key(self, event):
+			key = event.keysym.lower()
+			if key == &quot;escape&quot;: #ESC
+				return False
+			elif key == &quot;n&quot;: #Enter
+				self.game.new_game()
+			elif key == &quot;1&quot; or key == &quot;2&quot; or key == &quot;3&quot;: 
+				self.game.set_difficulty(int(key)) 
+			elif key == &quot;d&quot;: #Right arrow
+				self.game.set_direction(Direction.forward) 
+			elif key == &quot;a&quot;: #Left arrow
+				self.game.set_direction(Direction.backward)
+			elif key == &quot;w&quot;: #Up arrow
+				self.game.set_direction(Direction.upward)
+			elif key == &quot;s&quot;: #Down arrow
+				self.game.set_direction(Direction.downward)
+			return True
+		def loop(self): 
+			self.game.loop(self)   
+			self.console.after(self.speed, self.loop)
+		def start_game(self):
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(self.speed, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+	
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+	 
+	class Controller:
+		def __init__(self):
+			self.game = Game(30, 15, 3) 
+			self.speed = 300 
+			self.start_game()
+		def press_key(self, nbc):
+			key = str(nbc.get_data())
+			if key == &#39;\x1b&#39;: #ESC
+				return False
+			elif key == &#39;n&#39;: #Enter
+				self.game.new_game()
+			elif key == &#39;1&#39; or key == &#39;2&#39; or key == &#39;3&#39;: 
+				self.game.set_difficulty(int(key)) 
+			elif key == &#39;d&#39;: #Right arrow
+				self.game.set_direction(Direction.forward) 
+			elif key == &#39;a&#39;: #Left arrow
+				self.game.set_direction(Direction.backward)
+			elif key == &#39;w&#39;: #Up arrow
+				self.game.set_direction(Direction.upward)
+			elif key == &#39;s&#39;: #Down arrow
+				self.game.set_direction(Direction.downward)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(self.speed/1000.0)
+				self.game.loop(self)   
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+</feed>

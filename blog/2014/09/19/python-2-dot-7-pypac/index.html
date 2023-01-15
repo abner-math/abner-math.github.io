@@ -1,0 +1,808 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>(Python 2.7) PyPac - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="Here is another game of my series, this time about the classic Pacman. Click here to download Have fun! #!/usr/bin/python
+# -*-coding=utf-8 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">(Python 2.7) PyPac</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-19T10:04:09-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:04 am</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Here is another game of my series, this time about the classic Pacman.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pypac.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/892bf12a4a185721485f.js?file=PyPac.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------------
+# PyPac v1.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------------
+import time, os, platform, sys, select, math
+from random import randint
+from copy import copy
+ 
+&quot;&quot;&quot;
+Store a (x, y) coordinate of the terrain
+&quot;&quot;&quot;
+class Position:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y 
+ 
+&quot;&quot;&quot;
+Representates the terrain of the map.
+The terrain is a bidimensional matrix that is mapped through
+a string passed
+&quot;&quot;&quot;
+class Terrain:
+    GHOST = (Position(11, 4), Position(10, 6), Position(11, 6), Position(12, 6))
+    PACMAN = Position(10, 8)
+    GHOST_CHAR = &#39;^&#39;
+    GHOST_WEAKEN_CHAR = &#39;*&#39;
+    PACMAN_CHAR = &#39;@&#39;
+    BULLET = &#39;.&#39;
+    GREATER_BULLET = &#39;0&#39;
+    def __init__(self):
+        self.terrain = map(lambda x: list(x), &quot;&quot;&quot;
+  —————————————————— 
+ |○•••|••••••••|•••○|
+ |•——•|•——————•|•——•|
+ |•|••••••••••••••|•|
+—|•|•——•———-——•——•|•|—
+  •••••••|   |••••••  
+—|•|•——•——————•——•|•|—
+ |•|•••••• •••••••|•|
+ |•——•|•——————•|•——•|
+ |○•••|••••••••|•••○|
+  —————————————————— 
+&quot;&quot;&quot;.replace(&quot;•&quot;, Terrain.BULLET).replace(&quot;○&quot;, Terrain.GREATER_BULLET).replace(&quot;—&quot;, &quot;=&quot;).split(&quot;\n&quot;))
+    def is_blocked(self, position, direction):
+        try:
+            if position.x == 11 and position.y == 5 and direction == Direction.UPWARD: return False 
+            char = self.terrain[position.y][position.x] 
+            return char == &quot;|&quot; or char == &quot;=&quot; or char == &quot;-&quot;
+        except: return True
+    &quot;&quot;&quot;
+    Makes the pacman eats bullets and increment game score in process
+    &quot;&quot;&quot;
+    def eat(self, context, pacman):
+        position = self.terrain[pacman.position.y][pacman.position.x]
+        if position == Terrain.BULLET:
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 1 
+        elif position == Terrain.GREATER_BULLET: 
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 5  
+            return True
+        return False
+    &quot;&quot;&quot;
+    Verify is the terrain has no &#39;bullets&#39;
+    &quot;&quot;&quot;
+    def is_clear(self):
+        for line in self.terrain:
+            if &#39;.&#39; in line or &#39;0&#39; in line: return False
+        return True
+    @staticmethod
+    def clear_screen():
+        if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Render the terrain on the screen
+    &quot;&quot;&quot;
+    def render(self, pacman, ghosts):
+        Terrain.clear_screen()
+        matrix = []
+        for i in range(len(self.terrain)):
+            matrix.append(list(self.terrain[i]))
+        matrix[pacman.position.y][pacman.position.x] = Terrain.PACMAN_CHAR
+        for ghost in ghosts:
+            if ghost.is_weaken():
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_WEAKEN_CHAR
+            else:
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_CHAR
+        result = &quot;&quot;
+        for i in range(len(matrix)):
+            result += &quot;&quot;.join(matrix[i]) + &quot;\n&quot;
+        print(result)
+ 
+&quot;&quot;&quot;
+Enumerate the possible directions that a walkable can take
+&quot;&quot;&quot;
+class Direction:
+    FORWARD = 1
+    BACKWARD = 2
+    UPWARD = 3
+    DOWNWARD = 4
+ 
+&quot;&quot;&quot;
+Representates a walkable object in the map (ghost and pacman)
+&quot;&quot;&quot;
+class Walkable:
+    def __init__(self): pass
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Verify if given movement in a certain direction is possible
+    &quot;&quot;&quot;
+    def possible_movement(self, direction, terrain):
+        if direction == Direction.FORWARD:
+            return not terrain.is_blocked(Position(self.position.x + 1, self.position.y), direction)
+        elif direction == Direction.BACKWARD:
+            return not terrain.is_blocked(Position(self.position.x - 1, self.position.y), direction)
+        elif direction == Direction.UPWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y - 1), direction)
+        elif direction == Direction.DOWNWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y + 1), direction)
+    &quot;&quot;&quot;
+    Move the object toward its direction. Return false case the movement is not possible.
+    &quot;&quot;&quot;
+    def move(self, terrain):
+        if self.direction == Direction.FORWARD and self.position.x &gt;= len(terrain.terrain[self.position.y]) - 1:
+            self.position.x = 0
+        elif self.direction == Direction.BACKWARD and self.position.x &lt;= 0:
+            self.position.x = len(terrain.terrain[self.position.y]) - 1
+        elif self.possible_movement(self.direction, terrain): 
+            if self.direction == Direction.FORWARD:
+                self.position.x += 1
+            elif self.direction == Direction.BACKWARD:
+                self.position.x -= 1
+            elif self.direction == Direction.UPWARD:
+                self.position.y -= 1
+            elif self.direction == Direction.DOWNWARD:
+                self.position.y += 1
+        else: return False
+        return True
+ 
+&quot;&quot;&quot;
+Representates the ghosts in the map.
+A ghost is a walkable
+&quot;&quot;&quot;
+class Ghost(Walkable):
+    def __init__(self, number):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.GHOST[number])
+        self.isWeaken = False
+        self.direction = Direction.UPWARD
+    &quot;&quot;&quot;
+    Verify is ghost is weaken (frightened)
+    &quot;&quot;&quot;
+    def is_weaken(self):
+        return self.isWeaken
+    &quot;&quot;&quot;
+    Weaken the ghost, making it &#39;eatable&#39; by Pacman
+    &quot;&quot;&quot;
+    def weaken(self):
+        self.isWeaken = True
+    &quot;&quot;&quot;
+    Strengthen the ghost, making it dangerous to Pacman
+    &quot;&quot;&quot;
+    def strengthen(self):
+        self.isWeaken = False
+ 
+&quot;&quot;&quot;
+Representates the Pacman
+&quot;&quot;&quot;
+class Pacman(Walkable):
+    def __init__(self):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.PACMAN)
+        self.direction = Direction.FORWARD
+ 
+&quot;&quot;&quot;
+Main class of the game.
+It receives the input of the user and maps it to its state.
+&quot;&quot;&quot;
+class Game:
+    def __init__(self):
+        self.lives = 3
+        self.score = 0
+        self.level = 1
+        self.state = StateInitial(self)
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self):
+        self.state.loop()
+    &quot;&quot;&quot;
+    Set a direction of Pacman. Only work in StatePlaying.
+    &quot;&quot;&quot;
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+    &quot;&quot;&quot;
+    Start a new game.
+    &quot;&quot;&quot;
+    def start_new_game(self):
+        self.state.start_new_game()
+ 
+&quot;&quot;&quot;
+Superclass of states of a game
+&quot;&quot;&quot;
+class GameState:
+    def __init__(self): pass
+    def loop(self):  raise NotImplementedException()
+    def set_direction(self, direction): raise NotImplementedException()
+    def start_new_game(self): raise NotImplementedException()
+ 
+&quot;&quot;&quot;
+Initial screen of the game.
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.context.lives = 3
+        self.context.score = 0
+        self.context.level = 1
+    def loop(self): 
+        message = &quot;&quot;&quot;
+ ____  __ __  ____   ____    __ 
+|    \|  |  ||    \ /    |  /  ]   ──▒▒▒▒▒────▄████▄─────
+|  o  )  |  ||  o  )  o  | /  /    ─▒─▄▒─▄▒──███▄█▀──────
+|   _/|  ~  ||   _/|     |/  /     ─▒▒▒▒▒▒▒─▐████──█──█──
+|  |  |___, ||  |  |  _  /   \_    ─▒▒▒▒▒▒▒──█████▄──────
+|  |  |     ||  |  |  |  \     |   ─▒─▒─▒─▒───▀████▀─────
+|__|  |____/ |__|  |__|__|\____|
+                                
+GAME CONTROLS:
+-----------------------------
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39;, &#39;W&#39; TO MOVE.
+&#39;ESC&#39; TO EXIT GAME.
+-----------------------------
+ 
+CREATED BY:
+-----------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+        Terrain.clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StatePlaying(self.context) 
+ 
+class StateGameOver(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+    def loop(self): 
+        Terrain.clear_screen()
+        print(&quot;&quot;&quot;
+  ____   ____  ___ ___    ___       ___   __ __    ___  ____  
+ /    | /    ||   |   |  /  _]     /   \ |  |  |  /  _]|    \ 
+|   __||  o  || _   _ | /  [_     |     ||  |  | /  [_ |  D  )
+|  |  ||     ||  \_/  ||    _]    |  O  ||  |  ||    _]|    / 
+|  |_ ||  _  ||   |   ||   [_     |     ||  :  ||   [_ |    \ 
+|     ||  |  ||   |   ||     |    |     | \   / |     ||  .  \ 
+|___,_||__|__||___|___||_____|     \___/   \_/  |_____||__|\_|
+                                                              
+PRESS &#39;N&#39; TO START A NEW GAME.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+ 
+&quot;&quot;&quot;
+Main state of the game.
+Here is where the stuff happens.
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.start_new_level()
+    &quot;&quot;&quot;
+    Get the angle between two vectors.
+    &quot;&quot;&quot;
+    def __get_angle(self, w1, w2):
+        return math.degrees(math.atan2((w2.position.y - w1.position.y), (w2.position.x - w1.position.x)))
+    &quot;&quot;&quot;
+    Convert a given angle in a direction.
+    &quot;&quot;&quot;
+    def __get_direction(self, angle):
+        if 0 &lt;= angle &lt; 45:
+            return Direction.FORWARD
+        elif 45 &lt;= angle &lt; 135:
+            return Direction.UPWARD
+        elif 135 &lt;= angle &lt; 225:
+            return Direction.BACKWARD
+        elif 225 &lt;= angle &lt; 315:
+            return Direction.DOWNWARD
+        elif 315 &lt;= angle &lt; 360:
+            return Direction.FORWARD
+        return Direction.FORWARD
+    &quot;&quot;&quot;
+    Verify is two vectors are equal
+    &quot;&quot;&quot;
+    def __equals(self, p1, p2):
+        return p1.x == p2.x and p1.y == p2.y
+    &quot;&quot;&quot;
+    Verify if two ghosts occupies the same tile.
+    &quot;&quot;&quot;
+    def __contains_others(self, movingGhost):
+        for ghost in self.ghosts:
+            if ghost != movingGhost:
+                if self.__equals(ghost.position, movingGhost.position): return True
+        return False
+    &quot;&quot;&quot;
+    Move the ghosts through the map
+    &quot;&quot;&quot;
+    def __move_ghosts(self):
+        for ghost in self.ghosts:
+            if (self.count_loop % 2 == 0 or self.count_loop % 3) and ghost.is_weaken(): continue
+            if self.count_loop % 2 == 0 and not ghost.is_weaken(): continue
+            if self.__equals(ghost.position, Terrain.GHOST[0]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[1]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[2]):
+                ghost.turn(Direction.UPWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[3]):
+                ghost.turn(Direction.BACKWARD)    
+            else:
+                angle = self.__get_angle(ghost, self.pacman)
+                if ghost.is_weaken(): 
+                    angle += 180
+                ghost.turn(self.__get_direction(angle))
+            old_position = copy(ghost.position)
+            if ghost.direction == Direction.FORWARD:
+                forbidden_direction = Direction.BACKWARD
+            elif ghost.direction == Direction.BACKWARD:
+                forbidden_direction = Direction.FORWARD
+            elif ghost.direction == Direction.UPWARD:
+                forbidden_direction = Direction.DOWNWARD
+            elif ghost.direction == Direction.DOWNWARD:
+                forbidden_direction = Direction.UPWARD
+            count = 0 
+            while self.__equals(ghost.position, old_position) or self.__contains_others(ghost):
+                while True:
+                    ghost.direction = randint(1, 4) 
+                    if (ghost.possible_movement(ghost.direction, self.terrain) and ghost.direction != forbidden_direction) or count &gt; 100: break
+                    count += 1
+                ghost.move(self.terrain)
+    &quot;&quot;&quot;
+    Makes the Pacman eat (or being eaten) the ghosts, depending its state.
+    &quot;&quot;&quot;
+    def __eat_ghosts(self):
+        for i in range(len(self.ghosts)):
+            if self.__equals(self.ghosts[i].position, self.pacman.position):
+                if self.ghosts[i].is_weaken():
+                    self.ghosts[i].strengthen()
+                    self.ghosts[i].position = copy(Terrain.GHOST[i])
+                else:
+                    self.lose_live()
+    &quot;&quot;&quot;
+    Render the screen (terrain + info)
+    &quot;&quot;&quot;
+    def __render(self):
+        self.terrain.render(self.pacman, self.ghosts)
+        print(&quot;LIVES: %d    SCORE: %d    LEVEL: %d&quot; % (self.context.lives, self.context.score, self.context.level))
+    def loop(self): 
+        self.count_loop += 1
+        if self.terrain.is_clear():
+            print(&quot;&quot;&quot;
+CONGRATULATIONS! 
+A NEW LEVEL WILL START IN FEW SECONDS.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(1)
+            self.context.level += 1
+            self.start_new_level()
+        self.__move_ghosts()
+        self.pacman.move(self.terrain)
+        self.__eat_ghosts()
+        if self.countdown &gt; 0: self.countdown -= 1
+        else:
+            for ghost in self.ghosts: ghost.strengthen()
+        if self.terrain.eat(self, self.pacman):
+            for ghost in self.ghosts: ghost.weaken()
+            self.countdown = 15
+        self.__render()
+    def set_direction(self, direction):
+        if self.pacman.possible_movement(direction, self.terrain):
+            self.pacman.turn(direction)
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+    &quot;&quot;&quot;
+    Start a new level. On a new level, lives and points are mantained.
+    &quot;&quot;&quot;
+    def start_new_level(self):
+        self.terrain = Terrain()
+        self.pacman = Pacman()
+        self.ghosts = []
+        for i in range(4): self.ghosts.append(Ghost(i))
+        self.count_loop = 0
+        self.countdown = 0
+    &quot;&quot;&quot;
+    Makes Pacman lose a life. 
+    &quot;&quot;&quot;
+    def lose_live(self):
+        self.context.lives -= 1
+        if self.context.lives &lt;= 0:
+            self.context.state = StateGameOver(self.context)
+        else:
+            self.__render()
+            print(&quot;&quot;&quot;
+YOU LOST A LIVE.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(2)
+            self.pacman = Pacman()
+            self.pacman = Pacman()
+            self.ghosts = []
+            for i in range(4): self.ghosts.append(Ghost(i))
+            self.count_loop = 0
+            self.countdown = 0
+ 
+#---------------------------------
+# IO MANAGER
+#---------------------------------
+def controller_windows():
+    import Tkinter
+    class Controller:
+        SPEED = 0.2
+        def __init__(self):
+            self.game = Game() 
+            self.start_game()
+        def press_key(self, event):
+            key = event.keysym.lower()
+            if key == &quot;escape&quot;: #ESC
+                return False
+            elif key == &quot;n&quot;: #Enter
+                self.game.start_new_game()
+            elif key == &quot;d&quot;: #Right arrow
+                self.game.set_direction(Direction.FORWARD)
+            elif key == &quot;a&quot;: #Left arrow
+                self.game.set_direction(Direction.BACKWARD)
+            elif key == &quot;w&quot;: #Up arrow
+                self.game.set_direction(Direction.UPWARD)
+            elif key == &quot;s&quot;: #Down arrow
+                self.game.set_direction(Direction.DOWNWARD)
+            return True
+        def loop(self):
+            self.game.loop()   
+            self.console.after(250, self.loop)
+        def start_game(self):
+            self.console = Tkinter.Tk()
+            self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+            self.console.withdraw()
+            try:
+                self.console.after(250, self.loop)
+                self.console.mainloop()
+            except KeyboardInterrupt: pass
+    Controller()
+ 
+def controller_unix():
+    import termios, tty, thread
+    class NonBlockingConsole(object):
+        def __enter__(self):
+            self.old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+            return self
+        def __exit__(self, type, value, traceback):
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+        def get_data(self):
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                return sys.stdin.read(1)
+            return False
+                
+    class Controller:
+        SPEED = 0.2
+        def __init__(self):
+            self.game = Game() 
+            self.start_game()
+        def press_key(self, nbc):
+            key = str(nbc.get_data())
+            if key == &#39;\x1b&#39;: #ESC
+                return False
+            elif key == &#39;n&#39;: #Enter
+                self.game.start_new_game()
+            elif key == &#39;d&#39;: #Right arrow
+                self.game.set_direction(Direction.FORWARD)
+            elif key == &#39;a&#39;: #Left arrow
+                self.game.set_direction(Direction.BACKWARD)
+            elif key == &#39;w&#39;: #Up arrow
+                self.game.set_direction(Direction.UPWARD)
+            elif key == &#39;s&#39;: #Down arrow
+                self.game.set_direction(Direction.DOWNWARD)
+            return True
+        def loop(self, threadName): 
+            while self.running:
+                time.sleep(Controller.SPEED)
+                self.game.loop()   
+        def start_game(self):
+            self.running = True
+            thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+            try:
+                with NonBlockingConsole() as nbc:
+                    while self.press_key(nbc): pass
+            except KeyboardInterrupt: pass
+            self.running = False
+    Controller()
+    
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-09-19T10:04:09-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>19</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>10:04 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/games/'>games</a>, <a class='category' href='/blog/categories/python/'>python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+        <a class="basic-alignment left" href="/blog/2014/09/17/python-2-dot-7-pysnake/" title="Previous Post: (Python 2.7) PySnake">&laquo; (Python 2.7) PySnake</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/09/27/python-2-dot-7-pyinvaders/" title="Next Post: (Python 2.7) PyInvaders">(Python 2.7) PyInvaders &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

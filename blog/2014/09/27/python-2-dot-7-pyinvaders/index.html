@@ -1,0 +1,637 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>(Python 2.7) PyInvaders - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="The last game of terminal games series, this time a copy of Space Invaders. Click here to download Have fun! #!/usr/bin/python
+# -*-coding=utf-8 &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">(Python 2.7) PyInvaders</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2014-09-27T12:16:32-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>27</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:16 pm</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>The last game of terminal games series, this time a copy of Space Invaders.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pyinvaders.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/05364c4b67d5ed265871.js?file=PyInvaders.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PyInvaders v3.1
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import time, os, platform, random, sys, select
+
+class GameObject(object):
+    def __init__(self, life, x, y, char):
+        self.life = life
+        self.x = x
+        self.y = y
+        self.char = char
+    def getX(self):
+        return self.x
+    def getY(self):
+        return self.y
+    def getChar(self):
+        return self.char
+    def getLife(self):
+        return self.life
+    def setX(self, x):
+        self.x = x
+    def setY(self, y):
+        self.y = y
+    def damage(self):
+        self.life -= 1
+    def dead(self):
+        return self.life &lt;= 0
+    
+class Game(object):
+    def __init__(self):
+        self.new_game()
+    def new_game(self):
+        self.spacecraft = GameObject(3, 13, 8, &quot;^&quot;)
+        self.aliens = []
+        self.create_aliens()
+        self.walls = []
+        self.create_walls()
+        self.shoots = []
+        self.shoots_aliens = []
+        self.terrain = []
+        self.create_terrain()
+        self.score = 0
+        self.cooldown = False
+        self.start_screen = False
+        self.mode_screen = False
+        self.difficulty = 0
+    def create_aliens(self):
+        for x in range(5):
+            for y in range(10):
+                alien = GameObject(5-x, x+1, 4+y, &quot;@&quot;)
+                self.aliens.append(alien)
+    def create_walls(self):
+        for i in range(4):
+            wall = GameObject(1, 12, 3+i*3, &quot;~&quot;)
+            self.walls.append(wall)
+    def create_terrain(self):
+        for x in range(15):
+            self.terrain.append([])
+            for y in range(15):
+                self.terrain[-1].append(&quot; &quot;)
+    def clear_terrain(self):
+        for x in range(15):
+            for y in range(15):
+                self.terrain[x][y] = &quot; &quot;
+    def draw_spacecraft(self):
+        self.terrain[self.spacecraft.getX()][self.spacecraft.getY()] = self.spacecraft.getChar()
+    def find_alien(self, x, y):
+        for i in range(len(self.aliens)):
+            alien = self.aliens[i]
+            if alien.getX() == x and alien.getY() == y:
+                return i
+    def find_wall(self, x, y):
+        for i in range(len(self.walls)):
+            wall = self.walls[i]
+            if wall.getX() == x and wall.getY() == y:
+                return i
+    def destroy_shoot(self, i):
+        self.shoots.pop(i)
+    def draw_shoots(self):
+        for i in range(len(self.shoots) - 1, -1, -1):
+            shoot = self.shoots[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            a = self.find_alien(x, y)
+            if a != None:
+                self.aliens[a].damage()
+                if self.aliens[a].dead():
+                    self.aliens.pop(a)
+                    self.score += 10
+                self.destroy_shoot(i)
+            else:
+                if x &gt; 0:
+                    shoot.setX(x - 1)
+                else:
+                    self.destroy_shoot(i)
+        for shoot in self.shoots:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def destroy_shoot_aliens(self, i):
+        self.shoots_aliens.pop(i)
+    def alien_shoot(self):
+        x = random.randint(0, len(self.aliens)-1)
+        alien = self.aliens[x]
+        shoot = GameObject(1, alien.getX()+1, alien.getY(), &quot;:&quot;)
+        self.shoots_aliens.append(shoot)
+    def draw_shoots_aliens(self):
+        if int(time.localtime().tm_sec) % (4-self.difficulty) == 0:
+            self.alien_shoot()
+        for i in range(len(self.shoots_aliens) - 1, -1, -1):
+            shoot = self.shoots_aliens[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            m = self.find_wall(x, y)
+            if m != None:
+                self.walls[m].damage()
+                if self.walls[m].dead():
+                    self.walls.pop(m)
+                self.destroy_shoot_aliens(i)
+            elif x == self.spacecraft.getX() and y == self.spacecraft.getY():
+                self.spacecraft.damage()
+                if self.spacecraft.dead():
+                    self.game_over()
+                self.destroy_shoot_aliens(i)
+            else:
+                if x &lt; 14:
+                    shoot.setX(x + 1)
+                else:
+                    self.destroy_shoot_aliens(i)
+        for shoot in self.shoots_aliens:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def draw_aliens(self):
+        for alien in self.aliens:
+            self.terrain[alien.getX()][alien.getY()] = alien.getChar()
+    def draw_walls(self):
+        for wall in self.walls:
+            self.terrain[wall.getX()][wall.getY()] = wall.getChar()
+    def draw_terrain(self):
+        for x in range(15):
+            print &quot;&quot;.join(self.terrain[x])
+    def update(self):
+        if int(time.localtime().tm_sec) % self.difficulty == 0:
+            self.cooldown = False
+        print (&quot;SCORE&lt;%d&gt;&quot; % self.score).center(20)
+        self.clear_terrain()
+        self.draw_spacecraft()
+        self.draw_shoots()
+        self.draw_shoots_aliens()
+        self.draw_aliens()
+        self.draw_walls()
+        self.draw_terrain()
+        print (&quot;LIVES: %d&quot; % self.spacecraft.getLife()).center(20)
+        if len(self.aliens) == 0:
+            self.win()
+            return False 
+        elif self.spacecraft.dead():
+            return False 
+        return True 
+    def move_right(self):
+        if self.spacecraft.getY() &lt; 14:
+            self.spacecraft.setY(self.spacecraft.getY() + 1)
+    def move_left(self):
+        if self.spacecraft.getY() &gt; 0:
+            self.spacecraft.setY(self.spacecraft.getY() - 1)
+    def shoot(self):
+        if not self.cooldown:
+            shoot = GameObject(1, 12, self.spacecraft.getY(), &quot;|&quot;)
+            self.shoots.append(shoot)
+            self.cooldown = True
+    def game_over(self):
+        clear_screen()
+        print &quot;GAME OVER!!&quot;
+        time.sleep(3)
+    def win(self):
+        clear_screen()
+        print &quot;YOU ROCK!!&quot;
+        time.sleep(3)
+    def is_start_screen(self):
+        return self.start_screen
+    def start(self):
+        if not self.mode_screen:
+            print &quot;&quot;&quot;
+                              ##          ##
+                                ##      ##           
+                              ##############
+                            ####  ######  ####
+                          ######################
+                          ##  ##############  ##        
+                          ##  ##          ##  ##
+                                ####  ####
+                                    ##
+                                  ##
+                                    ##
+                                      ##
+                                    ##
+                                  ##
+                                    ## &quot;&quot;&quot;
+            print &quot;\n&quot;
+            print &quot;PYINVADERS&quot;.center(70)
+            print &quot;========= CREATED BY: =========&quot;.center(70)
+            print &quot;ABNER MATHEUS (abner.math.c@gmail.com)&quot;.center(70)
+            print &quot;\n&quot;
+            print &quot;PRESS &#39;N&#39; TO START A NEW GAME OR &#39;ESC&#39; TO EXIT GAME.&quot;.center(70)
+        else:
+            if self.difficulty == 0:
+                print &quot;&quot;&quot;DIFFICULTY:
+1. EASY
+2. AVERAGE
+3. HARD
+
+===================================
+GAME CONTROLS:
+===================================
+&#39;A&#39; AND &#39;D&#39; TO MOVE THE SPACECRAFT.
+&#39;S&#39; TO SHOOT.
+                &quot;&quot;&quot;
+            else:
+                self.start_screen = True
+    def new(self):
+        self.mode_screen = True
+    def set_difficulty(self, n):
+        self.difficulty = n
+       
+def clear_screen():
+    if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+    else: os.system(&quot;clear&quot;) 
+    
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+    import Tkinter
+    class Controller:
+        def __init__(self):
+            self.game = Game() 
+            self.start_game()
+        def press_key(self, key):
+            event = key.keysym.lower()
+            if event == &quot;escape&quot;:
+                self.console.destroy()
+            elif event == &quot;d&quot;:
+                self.game.move_right()
+            elif event == &quot;a&quot;:
+                self.game.move_left()
+            elif event == &quot;s&quot;:
+                self.game.shoot()
+            elif event == &quot;n&quot;:
+                self.game.new()
+            elif event == &quot;1&quot;:
+                self.game.set_difficulty(1)
+            elif event == &quot;2&quot;:
+                self.game.set_difficulty(2)
+            elif event == &quot;3&quot;:
+                self.game.set_difficulty(3)
+            return True
+        def loop(self): 
+            clear_screen()
+            if not self.game.is_start_screen():
+                self.game.start()
+            else:
+                if not self.game.update():
+                        self.game = Game()
+            self.console.after(250, self.loop)
+        def start_game(self):
+            self.game.start()
+            self.console = Tkinter.Tk()
+            self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+            self.console.withdraw()
+            try:
+                self.console.after(250, self.loop)
+                self.console.mainloop()
+            except KeyboardInterrupt: pass
+    Controller()
+    
+def controller_unix():
+    import termios, tty, thread
+    class NonBlockingConsole(object):
+        def __enter__(self):
+            self.old_settings = termios.tcgetattr(sys.stdin)
+            tty.setcbreak(sys.stdin.fileno())
+            return self
+        def __exit__(self, type, value, traceback):
+            termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+        def get_data(self):
+            if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+                return sys.stdin.read(1)
+            return False
+     
+    class Controller:
+        def __init__(self):
+            self.game = Game() 
+            self.start_game()
+        def press_key(self, nbc):
+            event = str(nbc.get_data())
+            if event == &#39;\x1b&#39;:
+                return False
+            elif event == &quot;d&quot;:
+                self.game.move_right()
+            elif event == &quot;a&quot;:
+                self.game.move_left()
+            elif event == &quot;s&quot;:
+                self.game.shoot()
+            elif event == &quot;n&quot;:
+                self.game.new()
+            elif event == &quot;1&quot;:
+                self.game.set_difficulty(1)
+            elif event == &quot;2&quot;:
+                self.game.set_difficulty(2)
+            elif event == &quot;3&quot;:
+                self.game.set_difficulty(3)
+            return True
+        def loop(self, threadName): 
+            while self.running:
+                time.sleep(250/1000.0)
+                clear_screen()
+                if not self.game.is_start_screen():
+                    self.game.start()
+                else:
+                    if not self.game.update():
+                        self.game = Game()
+        def start_game(self):
+            self.running = True
+            thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+            try:
+                with NonBlockingConsole() as nbc:
+                    while self.press_key(nbc): pass
+            except KeyboardInterrupt: pass
+            self.running = False
+    Controller()
+    
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()
+</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2014-09-27T12:16:32-03:00'><span class='date'><span class='date-month'>Sep</span> <span class='date-day'>27</span><span class='date-suffix'>th</span>, <span class='date-year'>2014</span></span> <span class='time'>12:16 pm</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/games/'>games</a>, <a class='category' href='/blog/categories/python/'>python</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+        <a class="basic-alignment left" href="/blog/2014/09/19/python-2-dot-7-pypac/" title="Previous Post: (Python 2.7) PyPac">&laquo; (Python 2.7) PyPac</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2014/09/28/java-hashboom/" title="Next Post: (Java) Hashboom">(Java) Hashboom &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

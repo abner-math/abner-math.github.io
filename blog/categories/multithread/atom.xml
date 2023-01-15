@@ -1,0 +1,1439 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Multithread | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/multithread/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[Multithreaded K-Means in Java]]></title>
+    <link href="http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java/"/>
+    <updated>2016-03-12T10:13:54-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java</id>
+    <content type="html"><![CDATA[<p>Single-threaded algorithms are fine and intuitive. There&rsquo;s an single execution flow running our program in the exact order we specified it. However, modern CPUs have multiple cores sharing the same memory space, meaning that many instructions can be executed in the same clock cycle. Having an single execution flow would be a wasteful use of the resources we have available. That&rsquo;s where multithread applications come in: It allows the use of <strong>true</strong> parallelism.</p>
+
+<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+
+
+
+
+<!-- more -->
+
+
+<h2>K-Means Clustering</h2>
+
+<p><a href="https://en.wikipedia.org/wiki/K-means_clustering">K-Means</a> is a well-known clustering algorithm. Clustering is important in many areas: Machine learning, data mining, etc.,&hellip; Hence the importance of clustering algorithms. It&rsquo;s success is due to two factors: Its simplicity and computational feasibility (running in O(nkdi), where n is the input size, k is the number of clusters, d is the input data dimension and i is the number of iterations needed to converge).</p>
+
+<p>Consider the following dataset:</p>
+
+<center><img src="http://abnerrjo.github.io/images/posts/Rplot01.png" />
+<p>You can download it <a href="http://abnerrjo.github.io/downloads/s2.txt">here</a>.</p></center>
+
+
+<p>Knowing the number of clusters at priori (in the above case, 15), we want to know the center of mass of each cluster (the point on which the distance to all other points in the cluster is the minimal possible). In another words:</p>
+
+<p style="text-align:center;"><img src="https://upload.wikimedia.org/math/9/8/3/983406139b111b6676a3db71cc217f2c.png" alt="" /></p>
+
+<p>The intuition behind K-Means is as follows: First, assign k random centers. For each data in the dataset calculate the nearest random point and add it to the &ldquo;cluster set&rdquo; of the nearest center. Then, for each cluster set, calculate the mean point and use this mean point as a substitute to the random center. This process is done iteratively until the mean points remain unchanged between one iteration and another (it&rsquo;s said that the algorithm &ldquo;converged&rdquo;). This gif explains the whole process nicely:</p>
+
+<center><img src="http://abnerrjo.github.io/images/posts/kmeans.gif" /></center>
+
+
+<p>Before implementing this in Java, let&rsquo;s write a simple pseudo-code:</p>
+
+<pre><code>Inputs:
+- dataset: Set of N-dimensional points
+- k: Number of clusters
+Output:
+- The center of mass of each cluster
+KMEANS(dataset[], k):
+    centers[] = randomly_initialize_points(k)
+    converged = false 
+    while not converged:
+        clusters = {}   
+        for each data in dataset:
+            center, index = get_nearest_center(data, centers)
+            clusters[index].add(data)
+        new_centers[] = calculate_means(clusters)
+        converged = centers == new_centers
+        centers = new_centers
+    return centers
+</code></pre>
+
+<p>Take a grasp to ensure you have fully understood the above algorithm.</p>
+
+<h2>Java implementation</h2>
+
+<p>Our whole program will be contained inside a single class, <code>KMeans</code>.
+<figure class='code'><figcaption><span>KMeans.java</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">KMeans</span> <span class="o">{&lt;/</span><span class="n">p</span><span class="o">&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">&lt;</span><span class="n">p</span><span class="o">&gt;}</span>
+</span></code></pre></td></tr></table></div></figure></p>
+
+<p>Inside of it, let&rsquo;s create a inner static class called <code>Point2D</code>, which will representate our data.</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+
+    public static class Point2D {
+
+        private float x;
+        private float y;
+
+        public Point2D(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        @Override
+        public String toString() {
+            return "[" + this.x + "," + this.y + "]";
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null || !(obj.getClass() != Point2D.class)) {
+                return false;
+            }
+            Point2D other = (Point2D) obj;
+            return this.x == other.x &amp;&amp; this.y == other.y;
+        }
+
+    }
+
+}
+</code></pre>
+
+<p>Nice! Now let&rsquo;s add some methods that will be useful for our program:</p>
+
+<pre><code>public class KMeans {
+
+    public class Point2D {
+
+        private float x;
+        private float y;
+
+        public Point2D(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+
+        private double getDistance(Point2D other) {
+            return Math.sqrt(Math.pow(this.x - other.x, 2) 
+                    + Math.pow(this.y - other.y, 2));
+        }
+
+        public int getNearestPointIndex(List&lt;Point2D&gt; points) {
+            int index = -1;
+            double minDist = Double.MAX_VALUE;
+            for (int i = 0; i &lt; points.size(); i++) {
+                double dist = this.getDistance(points.get(i));
+                if (dist &lt; minDist) {
+                    minDist = dist;
+                    index = i;
+                }
+            }
+            return index;
+        }
+
+        public static Point2D getMean(List&lt;Point2D&gt; points) {
+            float accumX = 0;
+            float accumY = 0;
+            if (points.size() == 0) return new Point2D(accumX, accumY);
+            for (Point2D point : points) {
+                accumX += point.x;
+                accumY += point.y;
+            }
+            return new Point2D(accumX / points.size(), accumY / points.size());
+        }
+
+        @Override
+        public String toString() {
+            return "[" + this.x + "," + this.y + "]";
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj == null || !(obj.getClass() != Point2D.class)) {
+                return false;
+            }
+            Point2D other = (Point2D) obj;
+            return this.x == other.x &amp;&amp; this.y == other.y;
+        }
+
+    }
+
+}
+</code></pre>
+
+<p>The method <code>getDistance</code> calculates the euclidean distance between two points. The method <code>getNearestPointIndex</code> returns the index of the nearest point in a list (it will be used to calculate the nearest center). Finally, <code>getMean</code> is a static method that receives a list of points and returns the mean point of that list (it will be used to calculate the new centers).</p>
+
+<p>Let&rsquo;s proceed now by creating a main to our main class:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.err.println("Usage: KMeans &lt;INPUT_FILE&gt; &lt;K&gt;");
+            System.exit(-1);
+        }
+        String inputFile = args[0];
+        int k = Integer.valueOf(args[1]);
+    }
+
+}
+</code></pre>
+
+<p>The program expects two arguments: The path to the input file where the data is contained and the number of clusters (k). We read those arguments and set them to the variables <code>inputFile</code> and <code>k</code>.</p>
+
+<p>The next thing we need to do is to read our data. Let&rsquo;s do it now:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+
+    private static final int REPLICATION_FACTOR = 200;
+
+    ...
+
+    public static List&lt;Point2D&gt; getDataset(String inputFile) throws Exception {
+        List&lt;Point2D&gt; dataset = new ArrayList&lt;&gt;();
+        BufferedReader br = new BufferedReader(new FileReader(inputFile));
+        String line;
+        while ((line = br.readLine()) != null) {
+            String[] tokens = line.split(",");
+            float x = Float.valueOf(tokens[0]);
+            float y = Float.valueOf(tokens[1]);
+            Point2D point = new Point2D(x, y);
+            for (int i = 0; i &lt; REPLICATION_FACTOR; i++)
+                dataset.add(point);
+        }
+        br.close();
+        return dataset;
+    }
+
+    public static void main(String[] args) {
+        ...
+        List&lt;Point2D&gt; dataset = null;
+        try {
+            dataset = getDataset(inputFile);
+        } catch (Exception e) {
+            System.err.println("ERROR: Could not read file " + inputFile);
+            System.exit(-1);
+        }
+    }
+
+}
+</code></pre>
+
+<p>The method <code>getDataset</code> receives the path to the input file and returns a list of points. We read the file content using a <code>BufferedReader</code> and puts it into a variable called <code>line</code>. We then split that line by the &ldquo;,&rdquo; symbol (because the coordinates are comma separated), convert each token into a float and create a new <code>Point2D</code> instance from them, adding that instance to the list that will be returned. The only &ldquo;awkward&rdquo; thing is the existence of a for loop while adding the new point instance to the list. I added it to &ldquo;replicate&rdquo; the data (hence the <code>REPLICATION_FACTOR</code> variable), in order to observe the effects of parallelization more clearly.</p>
+
+<p>OK! Now that we have the data, let&rsquo;s randomly initialize the centers.</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+
+    public static List&lt;Point2D&gt; initializeRandomCenters(int n, int lowerBound, int upperBound) {
+        List&lt;Point2D&gt; centers = new ArrayList&lt;&gt;(n);
+        for (int i = 0; i &lt; n; i++) {
+            float x = (float)(Math.random() * (upperBound - lowerBound) + lowerBound);
+            float y = (float)(Math.random() * (upperBound - lowerBound) + lowerBound);
+            Point2D point = new Point2D(x, y);
+            centers.add(point);
+        }
+        return centers;
+    }
+
+    public static void main(String[] args) {
+        ...
+        List&lt;Point2D&gt; centers = initializeRandomCenters(k, 0, 1000000);
+    }
+
+}
+</code></pre>
+
+<p>I believe the code is pretty straight-forward, so let&rsquo;s proceed.</p>
+
+<p>Now that we have both data and centers, we already can start the kmeans algorithm:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+
+    public static List&lt;Point2D&gt; kmeans(List&lt;Point2D&gt; centers, List&lt;Point2D&gt; dataset, int k) {
+        boolean converged;
+        do {
+            List&lt;Point2D&gt; newCenters = getNewCenters(dataset, centers);
+            double dist = getDistance(centers, newCenters);
+            centers = newCenters;
+            converged = dist == 0;
+        } while (!converged);
+        return centers;
+    }
+
+    public static void(String[] args) {
+        ...
+        long start = System.currentTimeMillis();
+        kmeans(centers, dataset, k);
+        System.out.println("Time elapsed: " + (System.currentTimeMillis() - start) + "ms");
+    }
+
+}
+</code></pre>
+
+<p>The <code>kmeans</code> method contains three parameters: <code>centers</code> (our randomly initialized centers), <code>dataset</code> (our set of point) and <code>k</code> (number of clusters) and returns a list of points (the final centers).</p>
+
+<p>There&rsquo;s a do/while loop which checks if the algorithm converged. Inside this loop, we get the new centers through the method <code>getNewCenters</code>, calculate the distance between the new centers and the old centers through the method <code>getDistance</code> and finally assign the old centers to the new centers. The algorithm will converge when the distance is equal to zero (the new centers are equal to the old centers).</p>
+
+<p>Clear? Good, let&rsquo;s start implementing the methods used inside the <code>kmeans</code> method, starting with <code>getNewCenters</code>:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+public static List&lt;Point2D&gt; getNewCenters(List&lt;Point2D&gt; dataset, List&lt;Point2D&gt; centers) {
+        List&lt;List&lt;Point2D&gt;&gt; clusters = new ArrayList&lt;&gt;(centers.size());
+        for (int i = 0; i &lt; centers.size(); i++) {
+            clusters.add(new ArrayList&lt;Point2D&gt;());
+        }
+        for (Point2D data : dataset) {
+            int index = data.getNearestPointIndex(centers);
+            clusters.get(index).add(data);
+        }
+        List&lt;Point2D&gt; newCenters = new ArrayList&lt;&gt;(centers.size());
+        for (List&lt;Point2D&gt; cluster : clusters) {
+            newCenters.add(Point2D.getMean(cluster));
+        }
+        return newCenters;
+    }
+    ...
+}
+</code></pre>
+
+<p>Basically this is core of the K-Means algorithm. We first assign a list of lists called clusters, which is initialized with <code>centers.size()</code> empty lists. Then, for each data in our dataset, we get the nearest center index through the method <code>getNearestPointIndex</code> previously defined and append the data to the cluster list of the nearest center. Finally, on our third loop, for each cluster in clusters, we calculate the mean and append it to the <code>newCenters</code> variable, which we use as the return of our method.</p>
+
+<p>Not very complicated, right? The <code>getDistance</code> method is easier:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+
+    public static double getDistance(List&lt;Point2D&gt; oldCenters, List&lt;Point2D&gt; newCenters) {
+        double accumDist = 0;
+        for (int i = 0; i &lt; oldCenters.size(); i++) {
+            double dist = oldCenters.get(i).getDistance(newCenters.get(i));
+            accumDist += dist;
+        }
+        return accumDist;
+    }
+    ...
+}
+</code></pre>
+
+<p>That&rsquo;s it! Our K-Means algorithm is done. Here&rsquo;s the whole program:</p>
+
+<center><input id="spoiler2" type="button" value="See source code" onclick="toggle_visibility('code2');"></center>
+
+
+<div id="code2" style="display: none;">
+<figure class='code'><figcaption><span>KMeans.java</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">KMeans</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REPLICATION_FACTOR</span> <span class="o">=</span> <span class="mi">200</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Point2D</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">float</span> <span class="n">x</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">float</span> <span class="n">y</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="nf">Point2D</span><span class="o">(</span><span class="kt">float</span> <span class="n">x</span><span class="o">,</span> <span class="kt">float</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">double</span> <span class="nf">getDistance</span><span class="o">(</span><span class="n">Point2D</span> <span class="n">other</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Math</span><span class="o">.</span><span class="na">sqrt</span><span class="o">(</span><span class="n">Math</span><span class="o">.</span><span class="na">pow</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="na">x</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+</span><span class='line'>                    <span class="o">+</span> <span class="n">Math</span><span class="o">.</span><span class="na">pow</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="na">y</span><span class="o">,</span> <span class="mi">2</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">int</span> <span class="nf">getNearestPointIndex</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">minDist</span> <span class="o">=</span> <span class="n">Double</span><span class="o">.</span><span class="na">MAX_VALUE</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">getDistance</span><span class="o">(</span><span class="n">points</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">dist</span> <span class="o">&lt;</span> <span class="n">minDist</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">minDist</span> <span class="o">=</span> <span class="n">dist</span><span class="o">;</span>
+</span><span class='line'>                    <span class="n">index</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="n">Point2D</span> <span class="nf">getMean</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">accumX</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">accumY</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">()</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="k">return</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">accumX</span><span class="o">,</span> <span class="n">accumY</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="n">Point2D</span> <span class="n">point</span> <span class="o">:</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">accumX</span> <span class="o">+=</span> <span class="n">point</span><span class="o">.</span><span class="na">x</span><span class="o">;</span>
+</span><span class='line'>                <span class="n">accumY</span> <span class="o">+=</span> <span class="n">point</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">accumX</span> <span class="o">/</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">(),</span> <span class="n">accumY</span> <span class="o">/</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="n">String</span> <span class="nf">toString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;[&quot;</span> <span class="o">+</span> <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">+</span> <span class="s">&quot;]&quot;</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">equals</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">obj</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!(</span><span class="n">obj</span><span class="o">.</span><span class="na">getClass</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Point2D</span><span class="o">.</span><span class="na">class</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">other</span> <span class="o">=</span> <span class="o">(</span><span class="n">Point2D</span><span class="o">)</span> <span class="n">obj</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="na">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">getDataset</span><span class="o">(</span><span class="n">String</span> <span class="n">inputFile</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'>        <span class="n">BufferedReader</span> <span class="n">br</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nf">FileReader</span><span class="o">(</span><span class="n">inputFile</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">String</span> <span class="n">line</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">br</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">String</span><span class="o">[]</span> <span class="n">tokens</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s">&quot;,&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="n">Float</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">tokens</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="n">Float</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">tokens</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">point</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">REPLICATION_FACTOR</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span>
+</span><span class='line'>                <span class="n">dataset</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">point</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">br</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">dataset</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">initializeRandomCenters</span><span class="o">(</span><span class="kt">int</span> <span class="n">n</span><span class="o">,</span> <span class="kt">int</span> <span class="n">lowerBound</span><span class="o">,</span> <span class="kt">int</span> <span class="n">upperBound</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">n</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">Math</span><span class="o">.</span><span class="na">random</span><span class="o">()</span> <span class="o">*</span> <span class="o">(</span><span class="n">upperBound</span> <span class="o">-</span> <span class="n">lowerBound</span><span class="o">)</span> <span class="o">+</span> <span class="n">lowerBound</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">Math</span><span class="o">.</span><span class="na">random</span><span class="o">()</span> <span class="o">*</span> <span class="o">(</span><span class="n">upperBound</span> <span class="o">-</span> <span class="n">lowerBound</span><span class="o">)</span> <span class="o">+</span> <span class="n">lowerBound</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">point</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">centers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">point</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">centers</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">getNewCenters</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;</span> <span class="n">clusters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">clusters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">Point2D</span> <span class="n">data</span> <span class="o">:</span> <span class="n">dataset</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">getNearestPointIndex</span><span class="o">(</span><span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">clusters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">index</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">cluster</span> <span class="o">:</span> <span class="n">clusters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">newCenters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">Point2D</span><span class="o">.</span><span class="na">getMean</span><span class="o">(</span><span class="n">cluster</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">double</span> <span class="nf">getDistance</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">oldCenters</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">double</span> <span class="n">accumDist</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">oldCenters</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">oldCenters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">getDistance</span><span class="o">(</span><span class="n">newCenters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>            <span class="n">accumDist</span> <span class="o">+=</span> <span class="n">dist</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">accumDist</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">kmeans</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">k</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">boolean</span> <span class="n">converged</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">do</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="n">getNewCenters</span><span class="o">(</span><span class="n">dataset</span><span class="o">,</span> <span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">getDistance</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">newCenters</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">centers</span> <span class="o">=</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">converged</span> <span class="o">=</span> <span class="n">dist</span> <span class="o">==</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">while</span> <span class="o">(!</span><span class="n">converged</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">centers</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">length</span> <span class="o">!=</span> <span class="mi">2</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Usage: KMeans &lt;INPUT_FILE&gt; &lt;K&gt;&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(-</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">String</span> <span class="n">inputFile</span> <span class="o">=</span> <span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">k</span> <span class="o">=</span> <span class="n">Integer</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dataset</span> <span class="o">=</span> <span class="n">getDataset</span><span class="o">(</span><span class="n">inputFile</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;ERROR: Could not read file &quot;</span> <span class="o">+</span> <span class="n">inputFile</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(-</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span> <span class="o">=</span> <span class="n">initializeRandomCenters</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">1000000</span><span class="o">);</span>
+</span><span class='line'>        <span class="kt">long</span> <span class="n">start</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">kmeans</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">dataset</span><span class="o">,</span> <span class="n">k</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Time elapsed: &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">start</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot;ms&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+</div>
+
+
+<script>
+$(function() {
+    $("#code2").hide();
+});
+</script>
+
+
+<h2>Parallelization analysis</h2>
+
+<p>Now that we have implemented our K-Means algorithm, it&rsquo;s time to decide what can be parallelized and what cannot be.</p>
+
+<p>Our main method is basically composed by three procedures:</p>
+
+<ul>
+<li>Read data</li>
+<li>Initialize centers</li>
+<li>Call kmeans method</li>
+</ul>
+
+
+<p>The first one cannot be parallelized, the second is too simple. Now let&rsquo;s take a further look at the <code>kmeans</code> method.</p>
+
+<p>We cannot parallelize the loop due to the fact that a iteration depends on the result of the previous iteration. Let&rsquo;s check the loop body then.</p>
+
+<p>The loop body is composed by two method calls:</p>
+
+<ul>
+<li>Calculate new centers</li>
+<li>Calculate distance between old and new centers</li>
+</ul>
+
+
+<p>The second is too computationally inexpensive (assuming that k is low). Let&rsquo;s take a further look at the first one.</p>
+
+<p>The <code>getNewCenters</code> is composed by three loops:</p>
+
+<ul>
+<li>Initialize clusters</li>
+<li>Calculate the nearest center for each point in the dataset</li>
+<li>Calculate the mean for each cluster</li>
+</ul>
+
+
+<p>The first and third ones are too computationally inexpensive (assuming that k is low). However, the second one is expected to be the most computationally expensive part of our whole program, since it iterates over our data (O(kn)). And since the calculation for the nearest center can be done independently for each point in the dataset, <strong>it can be parallelized</strong>.</p>
+
+<h2>Implementing parallelization</h2>
+
+<p>The basic unit of parallelization in Java is a <strong>thread</strong>. A thread is a execution flow. Since our program is running inside the Java Virtual Machine, there&rsquo;s no guarantee that each thread will be allocated to a different core, if available. However, the JVM does try, so it&rsquo;s our best guess.</p>
+
+<p>In order to parallelize the nearest center calculation loop, we first need to define the number of threads, partition our data by the number of threads, start each thread and wait for their terminations.</p>
+
+<p>First, let&rsquo;s create a method called <code>concurrentKmeans</code> which calls <code>concurrentGetNewCenters</code>:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+
+    ...
+
+    public static List&lt;Point2D&gt; concurrentGetNewCenters(List&lt;Point2D&gt; dataset, List&lt;Point2D&gt; centers) {
+        List&lt;List&lt;Point2D&gt;&gt; clusters = new ArrayList&lt;&gt;(centers.size());
+        for (int i = 0; i &lt; centers.size(); i++) {
+            clusters.add(new ArrayList&lt;Point2D&gt;());
+        }
+        for (Point2D data : dataset) {
+            int index = data.getNearestPointIndex(centers);
+            clusters.get(index).add(data);
+        }
+        List&lt;Point2D&gt; newCenters = new ArrayList&lt;&gt;(centers.size());
+        for (List&lt;Point2D&gt; cluster : clusters) {
+            newCenters.add(Point2D.getMean(cluster));
+        }
+        return newCenters;
+    }
+
+
+    public static List&lt;Point2D&gt; concurrentKmeans(List&lt;Point2D&gt; centers, List&lt;Point2D&gt; dataset, int k) {
+        boolean converged;
+        do {
+            List&lt;Point2D&gt; newCenters = concurrentGetNewCenters(dataset, centers);
+            double dist = getDistance(centers, newCenters);
+            centers = newCenters;
+            converged = dist == 0;
+        } while (!converged);
+        return centers;
+    }
+
+    public static void main(String[] args) {
+        ...
+        long start = System.currentTimeMillis();
+        kmeans(centers, dataset, k);
+        System.out.println("Time elapsed: " + (System.currentTimeMillis() - start) + "ms");
+        start = System.currentTimeMillis();
+        concurrentKmeans(centers, dataset, k);
+        System.out.println("Time elapsed: " + (System.currentTimeMillis() - start) + "ms");
+        System.exit(0);
+    }
+
+}
+</code></pre>
+
+<p>Now let&rsquo;s create the method to partition our data:</p>
+
+<pre><code>public class KMeans {
+    ...
+
+    private static &lt;V&gt; List&lt;List&lt;V&gt;&gt; partition(List&lt;V&gt; list, int parts) {
+        List&lt;List&lt;V&gt;&gt; lists = new ArrayList&lt;List&lt;V&gt;&gt;(parts);
+        for (int i = 0; i &lt; parts; i++) {
+            lists.add(new ArrayList&lt;V&gt;());
+        }
+        for (int i = 0; i &lt; list.size(); i++) {
+            lists.get(i % parts).add(list.get(i));
+        }
+        return lists;
+    }
+    ...
+} 
+</code></pre>
+
+<p>This is pretty straight-forward, so let&rsquo;s proceed. Now let&rsquo;s define the number of threads and instanciate them inside the <code>concurrentGetNewCenters</code> method.</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    private static final int NUM_THREADS = 30;
+    ...
+    public static List&lt;Point2D&gt; concurrentGetNewCenters(List&lt;Point2D&gt; dataset, List&lt;Point2D&gt; centers) {
+        List&lt;List&lt;Point2D&gt;&gt; clusters = new ArrayList&lt;&gt;(centers.size());
+        for (int i = 0; i &lt; centers.size(); i++) {
+            clusters.add(new ArrayList&lt;Point2D&gt;());
+        }
+        List&lt;List&lt;Point2D&gt;&gt; partitionedDataset = partition(dataset, NUM_THREADS);
+        Thread workers[] = new Thread[NUM_THREADS];
+        for (int i = 0; i &lt; workers.length; i++) {
+            workers[i] = createWorker(partitionedDataset.get(i), centers, clusters);
+            workers[i].start();
+        }
+        for (int i = 0; i &lt; workers.length; i++) {
+            try {
+                workers[i].join();
+            } catch (Exception e) { }
+        }
+        List&lt;Point2D&gt; newCenters = new ArrayList&lt;&gt;(centers.size());
+        for (List&lt;Point2D&gt; cluster : clusters) {
+            newCenters.add(Point2D.getMean(cluster));
+        }
+        return newCenters;
+    }
+    ...
+}
+</code></pre>
+
+<p>We defined a constant called <code>NUM_THREADS</code> initialized with an arbitrary value. We then partition our data, create an array of threads and in a loop loop we call the method <code>createWorker</code> which returns a new thread, which is started just after it. Finally, we call the method <code>join</code> in order to wait the worker threads termination.</p>
+
+<p>What <code>createWorker</code> should be? Well, initially it can contain the same code we had in the loop body of the non-parallelized code.</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+    private static Thread createWorker(final List&lt;Point2D&gt; partition, final List&lt;Point2D&gt; centers, final List&lt;List&lt;Point2D&gt;&gt; clusters) {
+        return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                for (Point2D data : partition) {
+                    int index = data.getNearestPointIndex(centers);
+                    clusters.get(index).add(data);
+                }
+            }
+        });
+    }
+    ...
+}
+</code></pre>
+
+<p>While this may seem fine in theory, this program contains a serious problem called <strong>race conditions</strong>, due to the fact that the <code>clusters</code> variable is being modified by many threads <strong>at the same time</strong>. This obviously will lead to problems, so we need to restrict the access to the <code>clusters</code> variable to only one thread at once. In Java, this is done through the keyword <code>synchronized</code> (in more technical therms, <em>synchronized</em> creates a <strong>monitor</strong>. A monitor is a high-level abstration for a <strong>semaphore</strong>, particularly one with capacity equal to one, also called <strong>mutex</strong>, that allows only one execution flow to access the resource being synchronized at once).</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+    private static Thread createWorker(final List&lt;Point2D&gt; partition, final List&lt;Point2D&gt; centers, final List&lt;List&lt;Point2D&gt;&gt; clusters) {
+    return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                synchronized(clusters) {
+                    for (Point2D data : partition) {
+                        int index = data.getNearestPointIndex(centers);
+                        clusters.get(index).add(data);
+                    }
+                }
+            }
+        });
+    }
+    ...
+}
+</code></pre>
+
+<p>Although the race conditions problem was solved, now our program has a performance issue. Why? Because the <code>synchronized</code> is killing all the parallelization! It&rsquo;s forcing only one thread to execute the loop <em>at once</em>. We can solve this problem by breaking our method into two parts, once to calculate the nearest center and another to save the calculation into the <code>clusters</code> variable. Only the second one must be synchronized, and since it&rsquo;s super fast, it won&rsquo;t kill our parallelization.</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+        ...
+        private static Thread createWorker(final List&lt;Point2D&gt; partition, final List&lt;Point2D&gt; centers, final List&lt;List&lt;Point2D&gt;&gt; clusters) {
+    return new Thread(new Runnable() {
+            @Override
+            public void run() {
+                int indexes[] = new indexes[partition.size()];
+                for (int i = 0; i &lt; partition.size(); i++) {
+                    indexes[i] = partitions.get(i).getNearestPointIndex(centers);
+                }
+                synchronized(clusters) {
+                    for (int i = 0; i &lt; indexes.length; i++) {
+                        clusters.get(indexes[i]).add(partition.get(i));
+                    }
+                }
+            }
+        });
+    }
+    ...
+}
+</code></pre>
+
+<p>There&rsquo;s just one last thing that need to be fixed in order of our program to become optimal. Suppose we just have 4 cores, but we are creating 30 threads. Even if we manage to successfully allocate each thread to a different core, there are more threads than cores available. In another words, there will be an overhead that can hurt the performance of our program (besides unnecessary memory allocation). We could adjust the number of threads to the number of cores, but let&rsquo;s go to the other way around: Let&rsquo;s make our program only execute a limited number of threads at once. This can be done through the <code>ExecutorService</code>.</p>
+
+<p>The first thing we need to do is to create a new <code>ExecutorService</code> informing the number of threads we want to execute at once. This can be done through the factory method <code>newFixedThreadPool</code>:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+
+    public static List&lt;Point2D&gt; concurrentGetNewCenters(List&lt;Point2D&gt; dataset, List&lt;Point2D&gt; centers) {
+                List&lt;List&lt;Point2D&gt;&gt; clusters = new ArrayList&lt;&gt;(centers.size());
+                for (int i = 0; i &lt; centers.size(); i++) {
+                        clusters.add(new ArrayList&lt;Point2D&gt;());
+                }
+                List&lt;List&lt;Point2D&gt;&gt; partitionedDataset = partition(dataset, NUM_THREADS);
+        ExecutorService executor = Executor.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+                Thread workers[] = new Thread[NUM_THREADS];
+                for (int i = 0; i &lt; workers.length; i++) {
+                        workers[i] = createWorker(partitionedDataset.get(i), centers, clusters);
+                        workers[i].start();
+                }
+                for (int i = 0; i &lt; workers.length; i++) {
+                        try {
+                                workers[i].join();
+                        } catch (Exception e) { }
+                }
+                List&lt;Point2D&gt; newCenters = new ArrayList&lt;&gt;(centers.size());
+                for (List&lt;Point2D&gt; cluster : clusters) {
+                        newCenters.add(Point2D.getMean(cluster));
+                }
+                return newCenters;
+        }
+
+}
+</code></pre>
+
+<p>The Runtime method <code>availableProcessors()</code> returns the number of cores available. OK! Now we can call the ExecutorService <code>invokeAll</code> method, which add all threads to the thread pool and blocks the current thread until all workers threads have been finished. Very convenient, right? The <code>invokeAll</code> method expects to receive a list of callables, so let&rsquo;s modify our <code>workerThread</code> method to return a <code>Callable</code> instead of a <code>Thread</code>:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+    private static Callable&lt;Void&gt; createWorker(final List&lt;Point2D&gt; partition, final List&lt;Point2D&gt; centers, 
+            final List&lt;List&lt;Point2D&gt;&gt; clusters) {
+        return new Callable&lt;Void&gt;() {
+
+            @Override
+            public Void call() throws Exception {
+                int indexes[] = new int[partition.size()];
+                for (int i = 0; i &lt; partition.size(); i++) {
+                    Point2D data = partition.get(i);
+                    int index = data.getNearestPointIndex(centers);
+                    indexes[i] = index;
+                }
+                synchronized (clusters) {
+                    for (int i = 0; i &lt; indexes.length; i++) {
+                        clusters.get(indexes[i]).add(partition.get(i));
+                    }   
+                }
+                return null;
+            }
+
+        };
+    }
+    ...
+}
+</code></pre>
+
+<p>It&rsquo;s pratically the same code. Now let&rsquo;s call the <code>invokeAll</code> method:</p>
+
+<pre><code class="java KMeans.java">public class KMeans {
+    ...
+    public static List&lt;Point2D&gt; concurrentGetNewCenters(final List&lt;Point2D&gt; dataset, final List&lt;Point2D&gt; centers) {
+        final List&lt;List&lt;Point2D&gt;&gt; clusters = new ArrayList&lt;List&lt;Point2D&gt;&gt;(centers.size());
+        for (int i = 0; i &lt; centers.size(); i++) {
+            clusters.add(new ArrayList&lt;Point2D&gt;());
+        }
+        List&lt;List&lt;Point2D&gt;&gt; partitionedDataset = partition(dataset, NUM_THREADS);
+        ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        List&lt;Callable&lt;Void&gt;&gt; workers = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; NUM_THREADS; i++) {
+            workers.add(createWorker(partitionedDataset.get(i), centers, clusters));
+        }
+        try {
+            executor.invokeAll(workers);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
+        List&lt;Point2D&gt; newCenters = new ArrayList&lt;&gt;(centers.size());
+        for (List&lt;Point2D&gt; cluster : clusters) {
+            newCenters.add(Point2D.getMean(cluster));
+        }
+        return newCenters;
+    }
+    ...
+}
+</code></pre>
+
+<p>That&rsquo;s it! Our parallelized version is done! Yay! :D</p>
+
+<h2>Results</h2>
+
+<p>Running our program, we can observe a speedup of 50% of the parallelized version in relation to the non-parallelized version, depending on the number of cores of your CPU.</p>
+
+<pre><code>Non-parallelized version
+Time elapsed: 6324ms
+Parallelized version
+Time elapsed: 3396ms
+</code></pre>
+
+<p>By the way, this is the result of the K-Means algorithm for our dataset:</p>
+
+<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+
+
+<p>Not bad! :)</p>
+
+<p>The full code can be found below.</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<figure class='code'><figcaption><span>KMeans.java</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+<span class='line-number'>185</span>
+<span class='line-number'>186</span>
+<span class='line-number'>187</span>
+<span class='line-number'>188</span>
+<span class='line-number'>189</span>
+<span class='line-number'>190</span>
+<span class='line-number'>191</span>
+<span class='line-number'>192</span>
+<span class='line-number'>193</span>
+<span class='line-number'>194</span>
+<span class='line-number'>195</span>
+<span class='line-number'>196</span>
+<span class='line-number'>197</span>
+<span class='line-number'>198</span>
+<span class='line-number'>199</span>
+<span class='line-number'>200</span>
+<span class='line-number'>201</span>
+<span class='line-number'>202</span>
+<span class='line-number'>203</span>
+<span class='line-number'>204</span>
+<span class='line-number'>205</span>
+<span class='line-number'>206</span>
+<span class='line-number'>207</span>
+<span class='line-number'>208</span>
+<span class='line-number'>209</span>
+<span class='line-number'>210</span>
+<span class='line-number'>211</span>
+<span class='line-number'>212</span>
+<span class='line-number'>213</span>
+<span class='line-number'>214</span>
+<span class='line-number'>215</span>
+<span class='line-number'>216</span>
+<span class='line-number'>217</span>
+<span class='line-number'>218</span>
+<span class='line-number'>219</span>
+<span class='line-number'>220</span>
+<span class='line-number'>221</span>
+<span class='line-number'>222</span>
+<span class='line-number'>223</span>
+<span class='line-number'>224</span>
+<span class='line-number'>225</span>
+<span class='line-number'>226</span>
+<span class='line-number'>227</span>
+<span class='line-number'>228</span>
+<span class='line-number'>229</span>
+<span class='line-number'>230</span>
+</pre></td><td class='code'><pre><code class='java'><span class='line'><span class="kn">import</span> <span class="nn">java.io.BufferedReader</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.io.FileReader</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.ArrayList</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.List</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.concurrent.Callable</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.concurrent.ExecutorService</span><span class="o">;</span>
+</span><span class='line'><span class="kn">import</span> <span class="nn">java.util.concurrent.Executors</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'><span class="kd">public</span> <span class="kd">class</span> <span class="nc">KMeans</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">REPLICATION_FACTOR</span> <span class="o">=</span> <span class="mi">200</span><span class="o">;</span>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="kd">final</span> <span class="kt">int</span> <span class="n">NUM_THREADS</span> <span class="o">=</span> <span class="mi">30</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kd">class</span> <span class="nc">Point2D</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">float</span> <span class="n">x</span><span class="o">;</span>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">float</span> <span class="n">y</span><span class="o">;</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="nf">Point2D</span><span class="o">(</span><span class="kt">float</span> <span class="n">x</span><span class="o">,</span> <span class="kt">float</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">=</span> <span class="n">y</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">private</span> <span class="kt">double</span> <span class="nf">getDistance</span><span class="o">(</span><span class="n">Point2D</span> <span class="n">other</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">Math</span><span class="o">.</span><span class="na">sqrt</span><span class="o">(</span><span class="n">Math</span><span class="o">.</span><span class="na">pow</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="na">x</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+</span><span class='line'>                    <span class="o">+</span> <span class="n">Math</span><span class="o">.</span><span class="na">pow</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="na">y</span><span class="o">,</span> <span class="mi">2</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">int</span> <span class="nf">getNearestPointIndex</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="o">;</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">minDist</span> <span class="o">=</span> <span class="n">Double</span><span class="o">.</span><span class="na">MAX_VALUE</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="k">this</span><span class="o">.</span><span class="na">getDistance</span><span class="o">(</span><span class="n">points</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>                <span class="k">if</span> <span class="o">(</span><span class="n">dist</span> <span class="o">&lt;</span> <span class="n">minDist</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">minDist</span> <span class="o">=</span> <span class="n">dist</span><span class="o">;</span>
+</span><span class='line'>                    <span class="n">index</span> <span class="o">=</span> <span class="n">i</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="k">return</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="kd">public</span> <span class="kd">static</span> <span class="n">Point2D</span> <span class="nf">getMean</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">accumX</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">accumY</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">()</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="k">return</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">accumX</span><span class="o">,</span> <span class="n">accumY</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="n">Point2D</span> <span class="n">point</span> <span class="o">:</span> <span class="n">points</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                <span class="n">accumX</span> <span class="o">+=</span> <span class="n">point</span><span class="o">.</span><span class="na">x</span><span class="o">;</span>
+</span><span class='line'>                <span class="n">accumY</span> <span class="o">+=</span> <span class="n">point</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">accumX</span> <span class="o">/</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">(),</span> <span class="n">accumY</span> <span class="o">/</span> <span class="n">points</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="n">String</span> <span class="nf">toString</span><span class="o">()</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">return</span> <span class="s">&quot;[&quot;</span> <span class="o">+</span> <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">+</span> <span class="s">&quot;,&quot;</span> <span class="o">+</span> <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">+</span> <span class="s">&quot;]&quot;</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="nd">@Override</span>
+</span><span class='line'>        <span class="kd">public</span> <span class="kt">boolean</span> <span class="nf">equals</span><span class="o">(</span><span class="n">Object</span> <span class="n">obj</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="k">if</span> <span class="o">(</span><span class="n">obj</span> <span class="o">==</span> <span class="kc">null</span> <span class="o">||</span> <span class="o">!(</span><span class="n">obj</span><span class="o">.</span><span class="na">getClass</span><span class="o">()</span> <span class="o">!=</span> <span class="n">Point2D</span><span class="o">.</span><span class="na">class</span><span class="o">))</span> <span class="o">{</span>
+</span><span class='line'>                <span class="k">return</span> <span class="kc">false</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">other</span> <span class="o">=</span> <span class="o">(</span><span class="n">Point2D</span><span class="o">)</span> <span class="n">obj</span><span class="o">;</span>
+</span><span class='line'>            <span class="k">return</span> <span class="k">this</span><span class="o">.</span><span class="na">x</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="na">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="na">y</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="na">y</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">getDataset</span><span class="o">(</span><span class="n">String</span> <span class="n">inputFile</span><span class="o">)</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'>        <span class="n">BufferedReader</span> <span class="n">br</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nf">FileReader</span><span class="o">(</span><span class="n">inputFile</span><span class="o">));</span>
+</span><span class='line'>        <span class="n">String</span> <span class="n">line</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="o">=</span> <span class="n">br</span><span class="o">.</span><span class="na">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="kc">null</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">String</span><span class="o">[]</span> <span class="n">tokens</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="na">split</span><span class="o">(</span><span class="s">&quot;,&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="n">Float</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">tokens</span><span class="o">[</span><span class="mi">0</span><span class="o">]);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="n">Float</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">tokens</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">point</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+</span><span class='line'>            <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">REPLICATION_FACTOR</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span>
+</span><span class='line'>                <span class="n">dataset</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">point</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">br</span><span class="o">.</span><span class="na">close</span><span class="o">();</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">dataset</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">initializeRandomCenters</span><span class="o">(</span><span class="kt">int</span> <span class="n">n</span><span class="o">,</span> <span class="kt">int</span> <span class="n">lowerBound</span><span class="o">,</span> <span class="kt">int</span> <span class="n">upperBound</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">n</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">n</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">x</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">Math</span><span class="o">.</span><span class="na">random</span><span class="o">()</span> <span class="o">*</span> <span class="o">(</span><span class="n">upperBound</span> <span class="o">-</span> <span class="n">lowerBound</span><span class="o">)</span> <span class="o">+</span> <span class="n">lowerBound</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">float</span> <span class="n">y</span> <span class="o">=</span> <span class="o">(</span><span class="kt">float</span><span class="o">)(</span><span class="n">Math</span><span class="o">.</span><span class="na">random</span><span class="o">()</span> <span class="o">*</span> <span class="o">(</span><span class="n">upperBound</span> <span class="o">-</span> <span class="n">lowerBound</span><span class="o">)</span> <span class="o">+</span> <span class="n">lowerBound</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">Point2D</span> <span class="n">point</span> <span class="o">=</span> <span class="k">new</span> <span class="nf">Point2D</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">centers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">point</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">centers</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="n">Callable</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;</span> <span class="nf">createWorker</span><span class="o">(</span><span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">partition</span><span class="o">,</span> <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">,</span>
+</span><span class='line'>            <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;</span> <span class="n">clusters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">return</span> <span class="k">new</span> <span class="n">Callable</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;()</span> <span class="o">{</span>
+</span><span class='line'>
+</span><span class='line'>            <span class="nd">@Override</span>
+</span><span class='line'>            <span class="kd">public</span> <span class="n">Void</span> <span class="nf">call</span><span class="o">()</span> <span class="kd">throws</span> <span class="n">Exception</span> <span class="o">{</span>
+</span><span class='line'>                <span class="kt">int</span> <span class="n">indexes</span><span class="o">[]</span> <span class="o">=</span> <span class="k">new</span> <span class="kt">int</span><span class="o">[</span><span class="n">partition</span><span class="o">.</span><span class="na">size</span><span class="o">()];</span>
+</span><span class='line'>                <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">partition</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="n">Point2D</span> <span class="n">data</span> <span class="o">=</span> <span class="n">partition</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">);</span>
+</span><span class='line'>                    <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">getNearestPointIndex</span><span class="o">(</span><span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>                    <span class="n">indexes</span><span class="o">[</span><span class="n">i</span><span class="o">]</span> <span class="o">=</span> <span class="n">index</span><span class="o">;</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="kd">synchronized</span> <span class="o">(</span><span class="n">clusters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>                    <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">indexes</span><span class="o">.</span><span class="na">length</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>                        <span class="n">clusters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">indexes</span><span class="o">[</span><span class="n">i</span><span class="o">]).</span><span class="na">add</span><span class="o">(</span><span class="n">partition</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>                    <span class="o">}</span>
+</span><span class='line'>                <span class="o">}</span>
+</span><span class='line'>                <span class="k">return</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>            <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>        <span class="o">};</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">private</span> <span class="kd">static</span> <span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;&gt;</span> <span class="nf">partition</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;</span> <span class="n">list</span><span class="o">,</span> <span class="kt">int</span> <span class="n">parts</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;&gt;</span> <span class="n">lists</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;&gt;(</span><span class="n">parts</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">parts</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">lists</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">V</span><span class="o">&gt;());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">list</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">lists</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span> <span class="o">%</span> <span class="n">parts</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="n">list</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">lists</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">concurrentGetNewCenters</span><span class="o">(</span><span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kd">final</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;</span> <span class="n">clusters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">clusters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;</span> <span class="n">partitionedDataset</span> <span class="o">=</span> <span class="n">partition</span><span class="o">(</span><span class="n">dataset</span><span class="o">,</span> <span class="n">NUM_THREADS</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">ExecutorService</span> <span class="n">executor</span> <span class="o">=</span> <span class="n">Executors</span><span class="o">.</span><span class="na">newFixedThreadPool</span><span class="o">(</span><span class="n">Runtime</span><span class="o">.</span><span class="na">getRuntime</span><span class="o">().</span><span class="na">availableProcessors</span><span class="o">());</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Callable</span><span class="o">&lt;</span><span class="n">Void</span><span class="o">&gt;&gt;</span> <span class="n">workers</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;();</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">NUM_THREADS</span><span class="o">;</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">workers</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">createWorker</span><span class="o">(</span><span class="n">partitionedDataset</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">),</span> <span class="n">centers</span><span class="o">,</span> <span class="n">clusters</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">executor</span><span class="o">.</span><span class="na">invokeAll</span><span class="o">(</span><span class="n">workers</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">InterruptedException</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">e</span><span class="o">.</span><span class="na">printStackTrace</span><span class="o">();</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(-</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">cluster</span> <span class="o">:</span> <span class="n">clusters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">newCenters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">Point2D</span><span class="o">.</span><span class="na">getMean</span><span class="o">(</span><span class="n">cluster</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">getNewCenters</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;&gt;</span> <span class="n">clusters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">clusters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;());</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">Point2D</span> <span class="n">data</span> <span class="o">:</span> <span class="n">dataset</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">int</span> <span class="n">index</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="na">getNearestPointIndex</span><span class="o">(</span><span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">clusters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">index</span><span class="o">).</span><span class="na">add</span><span class="o">(</span><span class="n">data</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="k">new</span> <span class="n">ArrayList</span><span class="o">&lt;&gt;(</span><span class="n">centers</span><span class="o">.</span><span class="na">size</span><span class="o">());</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">cluster</span> <span class="o">:</span> <span class="n">clusters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">newCenters</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="n">Point2D</span><span class="o">.</span><span class="na">getMean</span><span class="o">(</span><span class="n">cluster</span><span class="o">));</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">double</span> <span class="nf">getDistance</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">oldCenters</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">double</span> <span class="n">accumDist</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">for</span> <span class="o">(</span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">oldCenters</span><span class="o">.</span><span class="na">size</span><span class="o">();</span> <span class="n">i</span><span class="o">++)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">oldCenters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="na">getDistance</span><span class="o">(</span><span class="n">newCenters</span><span class="o">.</span><span class="na">get</span><span class="o">(</span><span class="n">i</span><span class="o">));</span>
+</span><span class='line'>            <span class="n">accumDist</span> <span class="o">+=</span> <span class="n">dist</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">accumDist</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">kmeans</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">k</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">boolean</span> <span class="n">converged</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">do</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="n">getNewCenters</span><span class="o">(</span><span class="n">dataset</span><span class="o">,</span> <span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">getDistance</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">newCenters</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">centers</span> <span class="o">=</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">converged</span> <span class="o">=</span> <span class="n">dist</span> <span class="o">==</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">while</span> <span class="o">(!</span><span class="n">converged</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">centers</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="nf">concurrentKmeans</span><span class="o">(</span><span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span><span class="o">,</span> <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span><span class="o">,</span> <span class="kt">int</span> <span class="n">k</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="kt">boolean</span> <span class="n">converged</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">do</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">newCenters</span> <span class="o">=</span> <span class="n">concurrentGetNewCenters</span><span class="o">(</span><span class="n">dataset</span><span class="o">,</span> <span class="n">centers</span><span class="o">);</span>
+</span><span class='line'>            <span class="kt">double</span> <span class="n">dist</span> <span class="o">=</span> <span class="n">getDistance</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">newCenters</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">centers</span> <span class="o">=</span> <span class="n">newCenters</span><span class="o">;</span>
+</span><span class='line'>            <span class="n">converged</span> <span class="o">=</span> <span class="n">dist</span> <span class="o">==</span> <span class="mi">0</span><span class="o">;</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">while</span> <span class="o">(!</span><span class="n">converged</span><span class="o">);</span>
+</span><span class='line'>        <span class="k">return</span> <span class="n">centers</span><span class="o">;</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'>    <span class="kd">public</span> <span class="kd">static</span> <span class="kt">void</span> <span class="nf">main</span><span class="o">(</span><span class="n">String</span><span class="o">[]</span> <span class="n">args</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>        <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="na">length</span> <span class="o">!=</span> <span class="mi">2</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Usage: KMeans &lt;INPUT_FILE&gt; &lt;K&gt;&quot;</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(-</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">String</span> <span class="n">inputFile</span> <span class="o">=</span> <span class="n">args</span><span class="o">[</span><span class="mi">0</span><span class="o">];</span>
+</span><span class='line'>        <span class="kt">int</span> <span class="n">k</span> <span class="o">=</span> <span class="n">Integer</span><span class="o">.</span><span class="na">valueOf</span><span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="mi">1</span><span class="o">]);</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">dataset</span> <span class="o">=</span> <span class="kc">null</span><span class="o">;</span>
+</span><span class='line'>        <span class="k">try</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">dataset</span> <span class="o">=</span> <span class="n">getDataset</span><span class="o">(</span><span class="n">inputFile</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">Exception</span> <span class="n">e</span><span class="o">)</span> <span class="o">{</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">err</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;ERROR: Could not read file &quot;</span> <span class="o">+</span> <span class="n">inputFile</span><span class="o">);</span>
+</span><span class='line'>            <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(-</span><span class="mi">1</span><span class="o">);</span>
+</span><span class='line'>        <span class="o">}</span>
+</span><span class='line'>        <span class="n">List</span><span class="o">&lt;</span><span class="n">Point2D</span><span class="o">&gt;</span> <span class="n">centers</span> <span class="o">=</span> <span class="n">initializeRandomCenters</span><span class="o">(</span><span class="n">k</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">1000000</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Non-parallelized version&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="kt">long</span> <span class="n">start</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">kmeans</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">dataset</span><span class="o">,</span> <span class="n">k</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Time elapsed: &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">start</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot;ms&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Parallelized version&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">start</span> <span class="o">=</span> <span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">();</span>
+</span><span class='line'>        <span class="n">concurrentKmeans</span><span class="o">(</span><span class="n">centers</span><span class="o">,</span> <span class="n">dataset</span><span class="o">,</span> <span class="n">k</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">out</span><span class="o">.</span><span class="na">println</span><span class="o">(</span><span class="s">&quot;Time elapsed: &quot;</span> <span class="o">+</span> <span class="o">(</span><span class="n">System</span><span class="o">.</span><span class="na">currentTimeMillis</span><span class="o">()</span> <span class="o">-</span> <span class="n">start</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot;ms&quot;</span><span class="o">);</span>
+</span><span class='line'>        <span class="n">System</span><span class="o">.</span><span class="na">exit</span><span class="o">(</span><span class="mi">0</span><span class="o">);</span>
+</span><span class='line'>    <span class="o">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="o">}</span>
+</span></code></pre></td></tr></table></div></figure>
+</div>
+
+
+<h2>Conclusion</h2>
+
+<p>In this tutorial, we learnt about K-Means clustering, threads, race conditions, monitors and thread pools (ExecutionService). Excellent! With the knowledge obtained in this tutorial, you already are able to do some basic concurrent programming in Java! :)</p>
+]]></content>
+  </entry>
+  
+</feed>

@@ -1,0 +1,1269 @@
+
+<!DOCTYPE html>
+<!--[if IEMobile 7 ]><html class="no-js iem7"><![endif]-->
+<!--[if lt IE 9]><html class="no-js lte-ie8"><![endif]-->
+<!--[if (gt IE 8)|(gt IEMobile 7)|!(IEMobile)|!(IE)]><!--><html class="no-js" lang="en"><!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <title>Fingertip Detection in OpenCV - Abner Araujo</title>
+  <meta name="author" content="Abner Araujo">
+
+  
+  <meta name="description" content="Hi! In this tutorial, we will learn how to detect fingertips using OpenCV. You ready? :D In computer vision, the task of recognizing an object in the &hellip;">
+  
+
+  <!-- http://t.co/dKP3o1e -->
+  <meta name="HandheldFriendly" content="True">
+  <meta name="MobileOptimized" content="320">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  
+  <link rel="canonical" href="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv">
+  <link href="/favicon.png" rel="icon">
+  <link href="/stylesheets/screen.css" media="screen, projection" rel="stylesheet" type="text/css">
+  <link href="/atom.xml" rel="alternate" title="Abner Araujo" type="application/atom+xml">
+  <script src="/javascripts/modernizr-2.0.js"></script>
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+  <script>!window.jQuery && document.write(unescape('%3Cscript src="./javascripts/libs/jquery.min.js"%3E%3C/script%3E'))</script>
+  <script src="/javascripts/octopress.js" type="text/javascript"></script>
+  <script src="/javascripts/spoiler.js"></script>
+  <script src="https://kit.fontawesome.com/5cf45ad639.js" crossorigin="anonymous"></script>
+  <!--Fonts from Google"s Web font directory at http://google.com/webfonts -->
+<link href="http://fonts.googleapis.com/css?family=PT+Serif:regular,italic,bold,bolditalic" rel="stylesheet" type="text/css">
+<link href='http://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'>
+<link href='http://fonts.googleapis.com/css?family=Fjalla+One' rel='stylesheet' type='text/css'>
+
+  
+
+</head>
+
+<body   >
+  <header role="banner"><hgroup>
+  <h1><a href="/">Abner Araujo</a></h1>
+  
+    <h2>Personal blog about tech</h2>
+  
+</hgroup>
+
+</header>
+  <nav role="navigation"><ul class="subscription" data-subscription="rss">
+  <li><a href="/atom.xml" rel="subscribe-rss" title="subscribe via RSS">RSS</a></li>
+  
+</ul>
+  
+<form action="https://www.google.com/search" method="get">
+  <fieldset role="search">
+    <input type="hidden" name="q" value="site:abnerrjo.github.io" />
+    <input class="search" type="text" name="q" results="0" placeholder="Search"/>
+  </fieldset>
+</form>
+  
+<ul class="main-navigation">
+  <li><a href="/">Home</a></li>
+  <li><a href="/blog">Blog</a></li>
+  <li><a href="/blog/archives">Entries</a></li>
+  <li><a href="https://github.com/abnerrjo"><i class="fa fa-github"></i> Github</a></li>
+</ul>
+
+</nav>
+  <div id="main">
+    <div id="content">
+      <div>
+<article class="hentry" role="article">
+  
+  <header>
+    
+      <h1 class="entry-title">Fingertip Detection in OpenCV</h1>
+    
+    
+      <p class="meta">
+        
+
+
+
+
+<time class='entry-date' datetime='2015-11-15T00:06:15-03:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:06 am</span></time>
+        
+           | <a href="#disqus_thread"
+             data-disqus-identifier="http://abnerrjo.github.io">Comments</a>
+        
+      </p>
+    
+  </header>
+
+
+<div class="entry-content"><p>Hi! In this tutorial, we will learn how to detect fingertips using OpenCV. You ready? :D</p>
+
+<p style="text-align:center;"><img src="/images/posts/fingertip1.png" alt="" /></p>
+
+<!-- more -->
+
+
+<p>In computer vision, the task of recognizing an object in the scene is very common. Unhappily, there is no &ldquo;silver bullet&rdquo; which can solve this problem for all kinds of objects. Each case must be treated individually (luckily it&rsquo;s changing with the rising of convolutional neural networks). In this case, we are interested in discover the location of fingertips (if any is present) in the image.</p>
+
+<p>Firstly, let me present you OpenCV, a open-source library for computer vision and digital image processing. It has many facilities which makes our daily life so much easier. :) (If you don&rsquo;t have OpenCV, I recommend following <a href="http://docs.opencv.org/2.4/doc/tutorials/introduction/table_of_content_introduction/table_of_content_introduction.html#table-of-content-introduction">this</a> tutorial).</p>
+
+<p>The first step before detecting the fingertips is to detect the hand, obviously. But how to do it? With color segmentation! You see, let&rsquo;s assume you&rsquo;re in front of a background with a much different color from your skin. Also, let&rsquo;s assume that your hand is the largest part of your body showing up. In this scenario, recognizing the hand would be easy, by simply selecting the pixels belonging to the color of your skin and then retrieving the largest area. That&rsquo;s precisely what we&rsquo;ll do!</p>
+
+<h2>Segmenting the hand skin</h2>
+
+<p>If you ever used any image manipulation software, you should know that there are several color spaces. The most common is the RGB, where any pixel is composed by the union of three colors (red, green, blue). However, for color segmenting, the HSV color space is much better, because in there the information of color is dissociated from the information of illumination. HSV stands for <strong>H</strong>ue (the color information), <strong>S</strong> (saturation, e.g., the percentage of &lsquo;color&rsquo; present) and <strong>V</strong> (value/brightness, e.g., the percentage of &lsquo;white&rsquo; color present). Generally, human skin lies between (H=0,S=58) and (H=50,S=173).</p>
+
+<p>Let&rsquo;s start implementing our detector. The first thing we need is to read the image from the webcam. OpenCV contains a module (imgproc) responsible for capturing images and videos.</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;opencv2/core/core.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/highgui/highgui.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/imgproc/imgproc.hpp&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">VideoCapture</span> <span class="n">cap</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">windowName</span> <span class="o">=</span> <span class="s">&quot;Fingertip detection&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">frame</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The argument passed to the &ldquo;VideoCapture&rdquo; object indicates the index of camera that we want to access (in case you have more than one connected to your computer). In a loop, we are getting a frame from the camera (through the >> operator) each 30 milliseconds (the argument of &ldquo;waitKey&rdquo; function, which waits x milliseconds until a key has been pressed, and returns -1 if none was pressed). Finally, we show the captured frame on the screen (through the &ldquo;imshow&rdquo; function).</p>
+
+<p>Now, let&rsquo;s convert our captured frame (which is in the BGR color space, e.g, inverted RGB) to HSV and then segment the color using the &ldquo;inRange&rdquo; operator:</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+</pre></td><td class='code'><pre><code class='c++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">VideoCapture</span> <span class="n">cap</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">windowName</span> <span class="o">=</span> <span class="s">&quot;Fingertip detection&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">minH</span> <span class="o">=</span> <span class="mi">130</span><span class="p">,</span> <span class="n">maxH</span> <span class="o">=</span> <span class="mi">160</span><span class="p">,</span> <span class="n">minS</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">maxS</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span> <span class="n">minV</span> <span class="o">=</span> <span class="mi">75</span><span class="p">,</span> <span class="n">maxV</span> <span class="o">=</span> <span class="mi">130</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>The &ldquo;inRange&rdquo; function receives the image that we want to threshold, the interval lower bound, the interval upper bound and the output image. The result is a black and white image, where pixels that have values inside the interval are colored with white, otherwise black.</p>
+
+<p style="text-align:center;"><img src="/images/posts/fingertip2.png" alt="" /></p>
+
+<p>As you can notice, this is a poor segmentation. We need to do a fine-tuning of HSV bounds in order to get a good segmentation. Since changing the value and recompiling the program is boring, it&rsquo;s better to use trackbars for this task:</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">VideoCapture</span> <span class="n">cap</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">windowName</span> <span class="o">=</span> <span class="s">&quot;Fingertip detection&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">minH</span> <span class="o">=</span> <span class="mi">130</span><span class="p">,</span> <span class="n">maxH</span> <span class="o">=</span> <span class="mi">160</span><span class="p">,</span> <span class="n">minS</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">maxS</span> <span class="o">=</span> <span class="mi">40</span><span class="p">,</span> <span class="n">minV</span> <span class="o">=</span> <span class="mi">75</span><span class="p">,</span> <span class="n">maxV</span> <span class="o">=</span> <span class="mi">130</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">namedWindow</span><span class="p">(</span><span class="n">windowName</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MinH&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">minH</span><span class="p">,</span> <span class="mi">180</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MaxH&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">maxH</span><span class="p">,</span> <span class="mi">180</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MinS&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">minS</span><span class="p">,</span> <span class="mi">255</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MaxS&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">maxS</span><span class="p">,</span> <span class="mi">255</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MinV&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">minV</span><span class="p">,</span> <span class="mi">255</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;MaxV&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">maxV</span><span class="p">,</span> <span class="mi">255</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p style="text-align:center;"><img src="/images/posts/fingertip3.png" alt="" /></p>
+
+<p>Even after adjusting the interval there is too much noise. We need to apply special techniques like <strong>median blur</strong> to remove isolated dots and <strong>dilate</strong> to fill &ldquo;holes&rdquo;:</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">elementSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">medianBlur</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">blurSize</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">MORPH_ELLIPSE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">elementSize</span><span class="p">,</span> <span class="n">elementSize</span><span class="p">));</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">dilate</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">element</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p style="text-align:center;"><img src="/images/posts/fingertip4.png" alt="" /></p>
+
+<p>Hmmm&hellip; Much better! :D But there is still some outliers&hellip; We can fix it by finding the contours of separated objects present in the thresholded image and then using only the object that has the contour with largest area.</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Pre processing</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">elementSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">medianBlur</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">blurSize</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">MORPH_ELLIPSE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">elementSize</span><span class="p">,</span> <span class="n">elementSize</span><span class="p">));</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">dilate</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">element</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Contour detection</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">contours</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">hierarchy</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">findContours</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">,</span> <span class="n">CV_RETR_EXTERNAL</span><span class="p">,</span> <span class="n">CV_CHAIN_APPROX_SIMPLE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</span><span class='line'>      <span class="kt">size_t</span> <span class="n">largestContour</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">contours</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]))</span>
+</span><span class='line'>              <span class="n">largestContour</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">largestContour</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">frame</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p style="text-align:center;"><img src="/images/posts/fingertip5.png" alt="" /></p>
+
+<p>The &ldquo;findContours&rdquo; function expects to receive a vector of vector of points, or, in another words, a vector of polygons. There are many detection methods. Here I chose &ldquo;CV_RETR_EXTERNAL&rdquo;, which means it will just return the most external contour, ignoring eventual contours that are inside the most external region. I then compare the areas of the returned polygons (through the &ldquo;contourArea&rdquo; function) to get the largest and then draw it on screen (through the &ldquo;drawContours&rdquo; function). We can see clearly that the result is the contour of my hand with a tiny red line. So we accomplished the task of segmenting our hand successfully. Let&rsquo;s move to the next step.</p>
+
+<h2>Detecting fingertips</h2>
+
+<p>In order to detect fingertips, we are going to use the <strong>Convex Hull</strong> technique. In mathematics, Convex Hull is the smallest convex set that contains a set of points. And a convex set is a set of points such that, if we trace a straight line from any pair of points in the set, that line must be also be inside the region. The result is then a nice, smooth region, much easier to be analised than our contour, that contains many imperfections. Luckily, this algorithm is also implemented on OpenCV through the &ldquo;convexHull&rdquo; function.</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Pre processing</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">elementSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">medianBlur</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">blurSize</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">MORPH_ELLIPSE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">elementSize</span><span class="p">,</span> <span class="n">elementSize</span><span class="p">));</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">dilate</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">element</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Contour detection</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">contours</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">hierarchy</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">findContours</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">,</span> <span class="n">CV_RETR_EXTERNAL</span><span class="p">,</span> <span class="n">CV_CHAIN_APPROX_SIMPLE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</span><span class='line'>      <span class="kt">size_t</span> <span class="n">largestContour</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">contours</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]))</span>
+</span><span class='line'>              <span class="n">largestContour</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">largestContour</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Convex hull</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">contours</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">hull</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">false</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hull</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">3</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">frame</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p style="text-align:center;"><img src="/images/posts/fingertip6.png" alt="" /></p>
+
+<p>We are just calculating the convex hull of our largest contour (in order to speed the process). The &ldquo;convexHull&rdquo; function expects to receive a set of polygons, just like the &ldquo;findContours&rdquo; function. Hence, drawing the region on screen follows the same logic.</p>
+
+<p>It&rsquo;s already pretty easy detecting the fingertips through the Convex Hull region. Their locations coincide with the &ldquo;corners&rdquo; of our Convex Hull polygon. But instead of doing it manually, we are going to detect it with the aid of &ldquo;<strong>convextDefects</strong>&rdquo; function. You see, there are &ldquo;gaps&rdquo; between the convex hull region and our contour region. The &ldquo;convexDefects&rdquo; will try to approximate those gaps using straight lines. We can then use that information to find the points where our fingertips are placed.</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="p">...</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="p">...</span>
+</span><span class='line'>      <span class="c1">// Convex hull</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">contours</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">hull</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">false</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hull</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">3</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">hullIndexes</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+</span><span class='line'>              <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">convexityDefects</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">convexityDefects</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="n">convexityDefects</span><span class="p">);</span>
+</span><span class='line'>              <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">convexityDefects</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">{</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p3</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">line</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">p1</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">line</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">p3</span><span class="p">,</span> <span class="n">p2</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">frame</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p style="text-align:center;"><img src="/images/posts/fingertip7.png" alt="" /></p>
+
+<p>I drew the convexity defects lines in blue. The &ldquo;convexityDefects&rdquo; function returns a vector of tuples of four values. The first value is the initial point of the defect region. The second value is the ending point of the defect region. The third value is the &ldquo;middle&rdquo; point of the defect region that connects the initial point and the ending point. The result is then two lines: One from the initial point to the middle point and one from middle point to the ending point. What only interests us in the initial point, that is the point where our fingertips are placed. I will draw it to make it more evident.</p>
+
+<p style="text-align:center;"><img src="/images/posts/fingertip8.png" alt="" /></p>
+
+<p>Ta-da! What sucks, however, is that there are far more points than just our fingertips. We need to do a filtering for only the points of our interest. We can think in some cheap but useful heuristics for that: i) Consider the inner angle between the two lines of the defect region to be between a certain interval; ii) Consider the angle between the initial point and the center of the contour region to be between a certain interval; iii) Consider the length of the line from the initial point to the middle point to be above a certain threshold. I think only those three are enough.</p>
+
+<p>The inner angle is exactly the angle between our fingers. The image below illustrates the concept better:</p>
+
+<p style="text-align:center;"><img src="http://simena86.github.io/images/handRecognition/handangle.png" alt="" /></p>
+
+<p>Generally, the angle between our fingers is between 20° and 120°. It can be calculated by translating the vector to the origin (by subtracting both by the middle point of the defect region) and then calculating the arc cosine of the inner product divided by the norm of the vectors:</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="n">theta</span> <span class="o">=</span> <span class="n">arcos</span><span class="p">(</span><span class="n">x</span> <span class="p">.</span> <span class="n">y</span> <span class="o">/</span> <span class="o">|</span><span class="n">x</span><span class="o">||</span><span class="n">y</span><span class="o">|</span><span class="p">)</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>This nice snippet will do exactly that:</p>
+
+<figure class='code'><figcaption><span></span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="kt">float</span> <span class="nf">innerAngle</span><span class="p">(</span><span class="kt">float</span> <span class="n">px1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">py1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">px2</span><span class="p">,</span> <span class="kt">float</span> <span class="n">py2</span><span class="p">,</span> <span class="kt">float</span> <span class="n">cx1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">cy1</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">dist1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span>  <span class="p">(</span><span class="n">px1</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">px1</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">py1</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">py1</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span> <span class="p">);</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">dist2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span>  <span class="p">(</span><span class="n">px2</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">px2</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">py2</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">py2</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Ax</span><span class="p">,</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Bx</span><span class="p">,</span> <span class="n">By</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Cx</span><span class="p">,</span> <span class="n">Cy</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">//find closest point to C  </span>
+</span><span class='line'> <span class="c1">//printf(&quot;dist = %lf %lf\n&quot;, dist1, dist2);  </span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">Cx</span> <span class="o">=</span> <span class="n">cx1</span><span class="p">;</span>
+</span><span class='line'> <span class="n">Cy</span> <span class="o">=</span> <span class="n">cy1</span><span class="p">;</span>
+</span><span class='line'> <span class="k">if</span><span class="p">(</span><span class="n">dist1</span> <span class="o">&lt;</span> <span class="n">dist2</span><span class="p">)</span>
+</span><span class='line'> <span class="p">{</span>
+</span><span class='line'>  <span class="n">Bx</span> <span class="o">=</span> <span class="n">px1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">By</span> <span class="o">=</span> <span class="n">py1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ax</span> <span class="o">=</span> <span class="n">px2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ay</span> <span class="o">=</span> <span class="n">py2</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>  <span class="n">Bx</span> <span class="o">=</span> <span class="n">px2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">By</span> <span class="o">=</span> <span class="n">py2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ax</span> <span class="o">=</span> <span class="n">px1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ay</span> <span class="o">=</span> <span class="n">py1</span><span class="p">;</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Q1</span> <span class="o">=</span> <span class="n">Cx</span> <span class="o">-</span> <span class="n">Ax</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Q2</span> <span class="o">=</span> <span class="n">Cy</span> <span class="o">-</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">P1</span> <span class="o">=</span> <span class="n">Bx</span> <span class="o">-</span> <span class="n">Ax</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">P2</span> <span class="o">=</span> <span class="n">By</span> <span class="o">-</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">A</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">acos</span><span class="p">(</span> <span class="p">(</span><span class="n">P1</span><span class="o">*</span><span class="n">Q1</span> <span class="o">+</span> <span class="n">P2</span><span class="o">*</span><span class="n">Q2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">P1</span><span class="o">*</span><span class="n">P1</span><span class="o">+</span><span class="n">P2</span><span class="o">*</span><span class="n">P2</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Q1</span><span class="o">*</span><span class="n">Q1</span><span class="o">+</span><span class="n">Q2</span><span class="o">*</span><span class="n">Q2</span><span class="p">)</span> <span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">A</span> <span class="o">=</span> <span class="n">A</span><span class="o">*</span><span class="mi">180</span><span class="o">/</span><span class="n">CV_PI</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">return</span> <span class="n">A</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>Now, the angle between the initial point and the center of contour region is necessary to erase points located in the lower part of the contour. In order to find the center of the contour, we must involve it with a bounding box. OpenCV already has a function for that called &ldquo;boundingBox&rdquo;. We just are going to consider points that are between -30° and 160°.</p>
+
+<p>And finally, the length of line from the initial point to the middle point can be calculated by simply calculating the euclidean distance between the initial point and the middle point.</p>
+
+<p>Crystal clear? Ok, here&rsquo;s the code:</p>
+
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="k">if</span> <span class="p">(</span><span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">hullIndexes</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">convexityDefects</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">convexityDefects</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="n">convexityDefects</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">Rect</span> <span class="n">boundingBox</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">boundingRect</span><span class="p">(</span><span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">rectangle</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">boundingBox</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">center</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">boundingBox</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="n">validPoints</span><span class="p">;</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">convexityDefects</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]];</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]];</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p3</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]];</span>
+</span><span class='line'>      <span class="kt">double</span> <span class="n">angle</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">atan2</span><span class="p">(</span><span class="n">center</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">center</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="mi">180</span> <span class="o">/</span> <span class="n">CV_PI</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">double</span> <span class="n">inAngle</span> <span class="o">=</span> <span class="n">innerAngle</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">p2</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p2</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">p3</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p3</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+</span><span class='line'>      <span class="kt">double</span> <span class="n">length</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p3</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p3</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">angle</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">30</span> <span class="o">&amp;&amp;</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="mi">160</span> <span class="o">&amp;&amp;</span> <span class="n">std</span><span class="o">::</span><span class="n">abs</span><span class="p">(</span><span class="n">inAngle</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">20</span> <span class="o">&amp;&amp;</span> <span class="n">std</span><span class="o">::</span><span class="n">abs</span><span class="p">(</span><span class="n">inAngle</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">120</span> <span class="o">&amp;&amp;</span> <span class="n">length</span> <span class="o">&gt;</span> <span class="mf">0.1</span> <span class="o">*</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">height</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">validPoints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">p1</span><span class="p">);</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">validPoints</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">circle</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">validPoints</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">9</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+
+
+<p>And the result is good enough:</p>
+
+<p style="text-align:center;"><img src="/images/posts/fingertip10.png" alt="" /></p>
+
+<p>The final code can be found below. I improved it by removing the trackbars from the color and, instead of it, allowing the user to click on the region where the hand is located and it will automatically extract the color information from there. Click again to establish a interval of colors. I also put trackbars for the angles, so you can adjust it during the program execution and check the effect of different intervals.</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<figure class='code'><figcaption><span>fingertip_detector.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
+<span class='line-number'>2</span>
+<span class='line-number'>3</span>
+<span class='line-number'>4</span>
+<span class='line-number'>5</span>
+<span class='line-number'>6</span>
+<span class='line-number'>7</span>
+<span class='line-number'>8</span>
+<span class='line-number'>9</span>
+<span class='line-number'>10</span>
+<span class='line-number'>11</span>
+<span class='line-number'>12</span>
+<span class='line-number'>13</span>
+<span class='line-number'>14</span>
+<span class='line-number'>15</span>
+<span class='line-number'>16</span>
+<span class='line-number'>17</span>
+<span class='line-number'>18</span>
+<span class='line-number'>19</span>
+<span class='line-number'>20</span>
+<span class='line-number'>21</span>
+<span class='line-number'>22</span>
+<span class='line-number'>23</span>
+<span class='line-number'>24</span>
+<span class='line-number'>25</span>
+<span class='line-number'>26</span>
+<span class='line-number'>27</span>
+<span class='line-number'>28</span>
+<span class='line-number'>29</span>
+<span class='line-number'>30</span>
+<span class='line-number'>31</span>
+<span class='line-number'>32</span>
+<span class='line-number'>33</span>
+<span class='line-number'>34</span>
+<span class='line-number'>35</span>
+<span class='line-number'>36</span>
+<span class='line-number'>37</span>
+<span class='line-number'>38</span>
+<span class='line-number'>39</span>
+<span class='line-number'>40</span>
+<span class='line-number'>41</span>
+<span class='line-number'>42</span>
+<span class='line-number'>43</span>
+<span class='line-number'>44</span>
+<span class='line-number'>45</span>
+<span class='line-number'>46</span>
+<span class='line-number'>47</span>
+<span class='line-number'>48</span>
+<span class='line-number'>49</span>
+<span class='line-number'>50</span>
+<span class='line-number'>51</span>
+<span class='line-number'>52</span>
+<span class='line-number'>53</span>
+<span class='line-number'>54</span>
+<span class='line-number'>55</span>
+<span class='line-number'>56</span>
+<span class='line-number'>57</span>
+<span class='line-number'>58</span>
+<span class='line-number'>59</span>
+<span class='line-number'>60</span>
+<span class='line-number'>61</span>
+<span class='line-number'>62</span>
+<span class='line-number'>63</span>
+<span class='line-number'>64</span>
+<span class='line-number'>65</span>
+<span class='line-number'>66</span>
+<span class='line-number'>67</span>
+<span class='line-number'>68</span>
+<span class='line-number'>69</span>
+<span class='line-number'>70</span>
+<span class='line-number'>71</span>
+<span class='line-number'>72</span>
+<span class='line-number'>73</span>
+<span class='line-number'>74</span>
+<span class='line-number'>75</span>
+<span class='line-number'>76</span>
+<span class='line-number'>77</span>
+<span class='line-number'>78</span>
+<span class='line-number'>79</span>
+<span class='line-number'>80</span>
+<span class='line-number'>81</span>
+<span class='line-number'>82</span>
+<span class='line-number'>83</span>
+<span class='line-number'>84</span>
+<span class='line-number'>85</span>
+<span class='line-number'>86</span>
+<span class='line-number'>87</span>
+<span class='line-number'>88</span>
+<span class='line-number'>89</span>
+<span class='line-number'>90</span>
+<span class='line-number'>91</span>
+<span class='line-number'>92</span>
+<span class='line-number'>93</span>
+<span class='line-number'>94</span>
+<span class='line-number'>95</span>
+<span class='line-number'>96</span>
+<span class='line-number'>97</span>
+<span class='line-number'>98</span>
+<span class='line-number'>99</span>
+<span class='line-number'>100</span>
+<span class='line-number'>101</span>
+<span class='line-number'>102</span>
+<span class='line-number'>103</span>
+<span class='line-number'>104</span>
+<span class='line-number'>105</span>
+<span class='line-number'>106</span>
+<span class='line-number'>107</span>
+<span class='line-number'>108</span>
+<span class='line-number'>109</span>
+<span class='line-number'>110</span>
+<span class='line-number'>111</span>
+<span class='line-number'>112</span>
+<span class='line-number'>113</span>
+<span class='line-number'>114</span>
+<span class='line-number'>115</span>
+<span class='line-number'>116</span>
+<span class='line-number'>117</span>
+<span class='line-number'>118</span>
+<span class='line-number'>119</span>
+<span class='line-number'>120</span>
+<span class='line-number'>121</span>
+<span class='line-number'>122</span>
+<span class='line-number'>123</span>
+<span class='line-number'>124</span>
+<span class='line-number'>125</span>
+<span class='line-number'>126</span>
+<span class='line-number'>127</span>
+<span class='line-number'>128</span>
+<span class='line-number'>129</span>
+<span class='line-number'>130</span>
+<span class='line-number'>131</span>
+<span class='line-number'>132</span>
+<span class='line-number'>133</span>
+<span class='line-number'>134</span>
+<span class='line-number'>135</span>
+<span class='line-number'>136</span>
+<span class='line-number'>137</span>
+<span class='line-number'>138</span>
+<span class='line-number'>139</span>
+<span class='line-number'>140</span>
+<span class='line-number'>141</span>
+<span class='line-number'>142</span>
+<span class='line-number'>143</span>
+<span class='line-number'>144</span>
+<span class='line-number'>145</span>
+<span class='line-number'>146</span>
+<span class='line-number'>147</span>
+<span class='line-number'>148</span>
+<span class='line-number'>149</span>
+<span class='line-number'>150</span>
+<span class='line-number'>151</span>
+<span class='line-number'>152</span>
+<span class='line-number'>153</span>
+<span class='line-number'>154</span>
+<span class='line-number'>155</span>
+<span class='line-number'>156</span>
+<span class='line-number'>157</span>
+<span class='line-number'>158</span>
+<span class='line-number'>159</span>
+<span class='line-number'>160</span>
+<span class='line-number'>161</span>
+<span class='line-number'>162</span>
+<span class='line-number'>163</span>
+<span class='line-number'>164</span>
+<span class='line-number'>165</span>
+<span class='line-number'>166</span>
+<span class='line-number'>167</span>
+<span class='line-number'>168</span>
+<span class='line-number'>169</span>
+<span class='line-number'>170</span>
+<span class='line-number'>171</span>
+<span class='line-number'>172</span>
+<span class='line-number'>173</span>
+<span class='line-number'>174</span>
+<span class='line-number'>175</span>
+<span class='line-number'>176</span>
+<span class='line-number'>177</span>
+<span class='line-number'>178</span>
+<span class='line-number'>179</span>
+<span class='line-number'>180</span>
+<span class='line-number'>181</span>
+<span class='line-number'>182</span>
+<span class='line-number'>183</span>
+<span class='line-number'>184</span>
+</pre></td><td class='code'><pre><code class='C++'><span class='line'><span class="cp">#include &lt;iostream&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="cp">#include &lt;opencv2/core/core.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/highgui/highgui.hpp&gt;</span>
+</span><span class='line'><span class="cp">#include &lt;opencv2/imgproc/imgproc.hpp&gt;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="n">minH</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">maxH</span> <span class="o">=</span> <span class="mi">20</span><span class="p">,</span> <span class="n">minS</span> <span class="o">=</span> <span class="mi">30</span><span class="p">,</span> <span class="n">maxS</span> <span class="o">=</span> <span class="mi">150</span><span class="p">,</span> <span class="n">minV</span> <span class="o">=</span> <span class="mi">60</span><span class="p">,</span> <span class="n">maxV</span> <span class="o">=</span> <span class="mi">255</span><span class="p">;</span>
+</span><span class='line'><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'><span class="kt">int</span> <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">float</span> <span class="nf">innerAngle</span><span class="p">(</span><span class="kt">float</span> <span class="n">px1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">py1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">px2</span><span class="p">,</span> <span class="kt">float</span> <span class="n">py2</span><span class="p">,</span> <span class="kt">float</span> <span class="n">cx1</span><span class="p">,</span> <span class="kt">float</span> <span class="n">cy1</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">dist1</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span>  <span class="p">(</span><span class="n">px1</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">px1</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">py1</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">py1</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span> <span class="p">);</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">dist2</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span>  <span class="p">(</span><span class="n">px2</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">px2</span><span class="o">-</span><span class="n">cx1</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">py2</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span><span class="o">*</span><span class="p">(</span><span class="n">py2</span><span class="o">-</span><span class="n">cy1</span><span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Ax</span><span class="p">,</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Bx</span><span class="p">,</span> <span class="n">By</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Cx</span><span class="p">,</span> <span class="n">Cy</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="c1">//find closest point to C  </span>
+</span><span class='line'> <span class="c1">//printf(&quot;dist = %lf %lf\n&quot;, dist1, dist2);  </span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">Cx</span> <span class="o">=</span> <span class="n">cx1</span><span class="p">;</span>
+</span><span class='line'> <span class="n">Cy</span> <span class="o">=</span> <span class="n">cy1</span><span class="p">;</span>
+</span><span class='line'> <span class="k">if</span><span class="p">(</span><span class="n">dist1</span> <span class="o">&lt;</span> <span class="n">dist2</span><span class="p">)</span>
+</span><span class='line'> <span class="p">{</span>
+</span><span class='line'>  <span class="n">Bx</span> <span class="o">=</span> <span class="n">px1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">By</span> <span class="o">=</span> <span class="n">py1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ax</span> <span class="o">=</span> <span class="n">px2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ay</span> <span class="o">=</span> <span class="n">py2</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="p">}</span><span class="k">else</span><span class="p">{</span>
+</span><span class='line'>  <span class="n">Bx</span> <span class="o">=</span> <span class="n">px2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">By</span> <span class="o">=</span> <span class="n">py2</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ax</span> <span class="o">=</span> <span class="n">px1</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">Ay</span> <span class="o">=</span> <span class="n">py1</span><span class="p">;</span>
+</span><span class='line'> <span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Q1</span> <span class="o">=</span> <span class="n">Cx</span> <span class="o">-</span> <span class="n">Ax</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">Q2</span> <span class="o">=</span> <span class="n">Cy</span> <span class="o">-</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">P1</span> <span class="o">=</span> <span class="n">Bx</span> <span class="o">-</span> <span class="n">Ax</span><span class="p">;</span>
+</span><span class='line'> <span class="kt">float</span> <span class="n">P2</span> <span class="o">=</span> <span class="n">By</span> <span class="o">-</span> <span class="n">Ay</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'>
+</span><span class='line'> <span class="kt">float</span> <span class="n">A</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">acos</span><span class="p">(</span> <span class="p">(</span><span class="n">P1</span><span class="o">*</span><span class="n">Q1</span> <span class="o">+</span> <span class="n">P2</span><span class="o">*</span><span class="n">Q2</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">P1</span><span class="o">*</span><span class="n">P1</span><span class="o">+</span><span class="n">P2</span><span class="o">*</span><span class="n">P2</span><span class="p">)</span> <span class="o">*</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">Q1</span><span class="o">*</span><span class="n">Q1</span><span class="o">+</span><span class="n">Q2</span><span class="o">*</span><span class="n">Q2</span><span class="p">)</span> <span class="p">)</span> <span class="p">);</span>
+</span><span class='line'>
+</span><span class='line'> <span class="n">A</span> <span class="o">=</span> <span class="n">A</span><span class="o">*</span><span class="mi">180</span><span class="o">/</span><span class="n">CV_PI</span><span class="p">;</span>
+</span><span class='line'>
+</span><span class='line'> <span class="k">return</span> <span class="n">A</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">void</span> <span class="nf">CallbackFunc</span><span class="p">(</span><span class="kt">int</span> <span class="n">event</span><span class="p">,</span> <span class="kt">int</span> <span class="n">x</span><span class="p">,</span> <span class="kt">int</span> <span class="n">y</span><span class="p">,</span> <span class="kt">int</span> <span class="n">flags</span><span class="p">,</span> <span class="kt">void</span><span class="o">*</span> <span class="n">userdata</span><span class="p">)</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">RGB</span> <span class="o">=</span> <span class="n">frame</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Rect</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">));</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">HSV</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">RGB</span><span class="p">,</span> <span class="n">HSV</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">Vec3b</span> <span class="n">pixel</span> <span class="o">=</span> <span class="n">HSV</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec3b</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">if</span> <span class="p">(</span><span class="n">event</span> <span class="o">==</span> <span class="n">cv</span><span class="o">::</span><span class="n">EVENT_LBUTTONDBLCLK</span><span class="p">)</span> <span class="c1">// on double left clcik</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">&quot;Click&quot;</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">h</span> <span class="o">=</span> <span class="n">pixel</span><span class="p">.</span><span class="n">val</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">s</span> <span class="o">=</span> <span class="n">pixel</span><span class="p">.</span><span class="n">val</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">v</span> <span class="o">=</span> <span class="n">pixel</span><span class="p">.</span><span class="n">val</span><span class="p">[</span><span class="mi">2</span><span class="p">];</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">minH</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">maxH</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">minS</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">maxS</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">minV</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>
+</span><span class='line'>          <span class="n">maxV</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="k">else</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">h</span> <span class="o">&lt;</span> <span class="n">minH</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">minH</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">h</span> <span class="o">&gt;</span> <span class="n">maxH</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">maxH</span> <span class="o">=</span> <span class="n">h</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">s</span> <span class="o">&lt;</span> <span class="n">minS</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">minS</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">s</span> <span class="o">&gt;</span> <span class="n">maxS</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">maxS</span> <span class="o">=</span> <span class="n">s</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&lt;</span> <span class="n">minV</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">minV</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">v</span> <span class="o">&gt;</span> <span class="n">maxV</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">maxV</span> <span class="o">=</span> <span class="n">v</span><span class="p">;</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>          
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">count</span><span class="o">++</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">pixel</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span><span class='line'>
+</span><span class='line'><span class="kt">int</span> <span class="nf">main</span><span class="p">()</span>
+</span><span class='line'><span class="p">{</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">VideoCapture</span> <span class="n">cap</span><span class="p">(</span><span class="mi">0</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">const</span> <span class="kt">char</span><span class="o">*</span> <span class="n">windowName</span> <span class="o">=</span> <span class="s">&quot;Fingertip detection&quot;</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">namedWindow</span><span class="p">(</span><span class="n">windowName</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">setMouseCallback</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">CallbackFunc</span><span class="p">,</span> <span class="nb">NULL</span><span class="p">);</span>
+</span><span class='line'>  <span class="kt">int</span> <span class="n">inAngleMin</span> <span class="o">=</span> <span class="mi">200</span><span class="p">,</span> <span class="n">inAngleMax</span> <span class="o">=</span> <span class="mi">300</span><span class="p">,</span> <span class="n">angleMin</span> <span class="o">=</span> <span class="mi">180</span><span class="p">,</span> <span class="n">angleMax</span> <span class="o">=</span> <span class="mi">359</span><span class="p">,</span> <span class="n">lengthMin</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span> <span class="n">lengthMax</span> <span class="o">=</span> <span class="mi">80</span><span class="p">;</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Inner angle min&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">inAngleMin</span><span class="p">,</span> <span class="mi">360</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Inner angle max&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">inAngleMax</span><span class="p">,</span> <span class="mi">360</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Angle min&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">angleMin</span><span class="p">,</span> <span class="mi">360</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Angle max&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">angleMax</span><span class="p">,</span> <span class="mi">360</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Length min&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lengthMin</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+</span><span class='line'>  <span class="n">cv</span><span class="o">::</span><span class="n">createTrackbar</span><span class="p">(</span><span class="s">&quot;Length max&quot;</span><span class="p">,</span> <span class="n">windowName</span><span class="p">,</span> <span class="o">&amp;</span><span class="n">lengthMax</span><span class="p">,</span> <span class="mi">100</span><span class="p">);</span>
+</span><span class='line'>  <span class="k">while</span> <span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+</span><span class='line'>  <span class="p">{</span>
+</span><span class='line'>      <span class="n">cap</span> <span class="o">&gt;&gt;</span> <span class="n">frame</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">hsv</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">CV_BGR2HSV</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">inRange</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">minH</span><span class="p">,</span> <span class="n">minS</span><span class="p">,</span> <span class="n">minV</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="n">maxH</span><span class="p">,</span> <span class="n">maxS</span><span class="p">,</span> <span class="n">maxV</span><span class="p">),</span> <span class="n">hsv</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Pre processing</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">blurSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="kt">int</span> <span class="n">elementSize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">medianBlur</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">blurSize</span><span class="p">);</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">getStructuringElement</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">MORPH_ELLIPSE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Size</span><span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">elementSize</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">elementSize</span><span class="p">,</span> <span class="n">elementSize</span><span class="p">));</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">dilate</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">hsv</span><span class="p">,</span> <span class="n">element</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Contour detection</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">contours</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">hierarchy</span><span class="p">;</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">findContours</span><span class="p">(</span><span class="n">hsv</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">hierarchy</span><span class="p">,</span> <span class="n">CV_RETR_EXTERNAL</span><span class="p">,</span> <span class="n">CV_CHAIN_APPROX_SIMPLE</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</span><span class='line'>      <span class="kt">size_t</span> <span class="n">largestContour</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'>      <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">contours</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">i</span><span class="p">])</span> <span class="o">&gt;</span> <span class="n">cv</span><span class="o">::</span><span class="n">contourArea</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]))</span>
+</span><span class='line'>              <span class="n">largestContour</span> <span class="o">=</span> <span class="n">i</span><span class="p">;</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">contours</span><span class="p">,</span> <span class="n">largestContour</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>      <span class="c1">// Convex hull</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span class="n">contours</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+</span><span class='line'>      <span class="p">{</span>
+</span><span class='line'>          <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="o">&gt;</span> <span class="n">hull</span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">false</span><span class="p">);</span>
+</span><span class='line'>          <span class="n">cv</span><span class="o">::</span><span class="n">drawContours</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">hull</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">3</span><span class="p">);</span>
+</span><span class='line'>          <span class="k">if</span> <span class="p">(</span><span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">].</span><span class="n">size</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">)</span>
+</span><span class='line'>          <span class="p">{</span>
+</span><span class='line'>              <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">hullIndexes</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">convexHull</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="nb">true</span><span class="p">);</span>
+</span><span class='line'>              <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Vec4i</span><span class="o">&gt;</span> <span class="n">convexityDefects</span><span class="p">;</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">convexityDefects</span><span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">Mat</span><span class="p">(</span><span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">]),</span> <span class="n">hullIndexes</span><span class="p">,</span> <span class="n">convexityDefects</span><span class="p">);</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">Rect</span> <span class="n">boundingBox</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">boundingRect</span><span class="p">(</span><span class="n">hull</span><span class="p">[</span><span class="mi">0</span><span class="p">]);</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">rectangle</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">boundingBox</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">));</span>
+</span><span class='line'>              <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">center</span> <span class="o">=</span> <span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="p">(</span><span class="n">boundingBox</span><span class="p">.</span><span class="n">x</span> <span class="o">+</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">width</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">y</span> <span class="o">+</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">height</span> <span class="o">/</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>              <span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">cv</span><span class="o">::</span><span class="n">Point</span><span class="o">&gt;</span> <span class="n">validPoints</span><span class="p">;</span>
+</span><span class='line'>              <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">convexityDefects</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">{</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p1</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">0</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p2</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">Point</span> <span class="n">p3</span> <span class="o">=</span> <span class="n">contours</span><span class="p">[</span><span class="n">largestContour</span><span class="p">][</span><span class="n">convexityDefects</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">2</span><span class="p">]];</span>
+</span><span class='line'>                  <span class="kt">double</span> <span class="n">angle</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">atan2</span><span class="p">(</span><span class="n">center</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">center</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="mi">180</span> <span class="o">/</span> <span class="n">CV_PI</span><span class="p">;</span>
+</span><span class='line'>                  <span class="kt">double</span> <span class="n">inAngle</span> <span class="o">=</span> <span class="n">innerAngle</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p1</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">p2</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p2</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="n">p3</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="n">p3</span><span class="p">.</span><span class="n">y</span><span class="p">);</span>
+</span><span class='line'>                  <span class="kt">double</span> <span class="n">length</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">x</span> <span class="o">-</span> <span class="n">p3</span><span class="p">.</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="n">std</span><span class="o">::</span><span class="n">pow</span><span class="p">(</span><span class="n">p1</span><span class="p">.</span><span class="n">y</span> <span class="o">-</span> <span class="n">p3</span><span class="p">.</span><span class="n">y</span><span class="p">,</span> <span class="mi">2</span><span class="p">));</span>
+</span><span class='line'>                  <span class="k">if</span> <span class="p">(</span><span class="n">angle</span> <span class="o">&gt;</span> <span class="n">angleMin</span> <span class="o">-</span> <span class="mi">180</span> <span class="o">&amp;&amp;</span> <span class="n">angle</span> <span class="o">&lt;</span> <span class="n">angleMax</span> <span class="o">-</span> <span class="mi">180</span> <span class="o">&amp;&amp;</span> <span class="n">inAngle</span> <span class="o">&gt;</span> <span class="n">inAngleMin</span> <span class="o">-</span> <span class="mi">180</span> <span class="o">&amp;&amp;</span> <span class="n">inAngle</span> <span class="o">&lt;</span> <span class="n">inAngleMax</span> <span class="o">-</span> <span class="mi">180</span> <span class="o">&amp;&amp;</span> <span class="n">length</span> <span class="o">&gt;</span> <span class="n">lengthMin</span> <span class="o">/</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">height</span> <span class="o">&amp;&amp;</span> <span class="n">length</span> <span class="o">&lt;</span> <span class="n">lengthMax</span> <span class="o">/</span> <span class="mf">100.0</span> <span class="o">*</span> <span class="n">boundingBox</span><span class="p">.</span><span class="n">height</span><span class="p">)</span>
+</span><span class='line'>                  <span class="p">{</span>
+</span><span class='line'>                      <span class="n">validPoints</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">p1</span><span class="p">);</span>
+</span><span class='line'>                  <span class="p">}</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>              <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">validPoints</span><span class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="n">i</span><span class="o">++</span><span class="p">)</span>
+</span><span class='line'>              <span class="p">{</span>
+</span><span class='line'>                  <span class="n">cv</span><span class="o">::</span><span class="n">circle</span><span class="p">(</span><span class="n">frame</span><span class="p">,</span> <span class="n">validPoints</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">9</span><span class="p">,</span> <span class="n">cv</span><span class="o">::</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">);</span>
+</span><span class='line'>              <span class="p">}</span>
+</span><span class='line'>          <span class="p">}</span>
+</span><span class='line'>      <span class="p">}</span>
+</span><span class='line'>      <span class="n">cv</span><span class="o">::</span><span class="n">imshow</span><span class="p">(</span><span class="n">windowName</span><span class="p">,</span> <span class="n">frame</span><span class="p">);</span>
+</span><span class='line'>      <span class="k">if</span> <span class="p">(</span><span class="n">cv</span><span class="o">::</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">30</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="k">break</span><span class="p">;</span>
+</span><span class='line'>  <span class="p">}</span>
+</span><span class='line'>  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+</span><span class='line'><span class="p">}</span>
+</span></code></pre></td></tr></table></div></figure>
+</div>
+
+
+<h2>Conclusion</h2>
+
+<p>Well&hellip; That wasn&rsquo;t so easy as it seemed at first. Detection tasks are indeed a pain in many cases. Even our example just works in very specific and unrealistic conditions (background with a much different color from our skin, hand is positioned in front of the camera in a certain angle, etc.,&hellip;), but, you know that they say: One step at a time. Until the next tutorial!</p>
+</div>
+
+
+  <footer>
+    <p class="meta">
+      
+  
+
+<span class="byline author vcard">Posted by <span class="fn">Abner Araujo</span></span>
+
+      
+
+
+
+
+<time class='entry-date' datetime='2015-11-15T00:06:15-03:00'><span class='date'><span class='date-month'>Nov</span> <span class='date-day'>15</span><span class='date-suffix'>th</span>, <span class='date-year'>2015</span></span> <span class='time'>12:06 am</span></time>
+      
+
+<span class="categories">
+  
+    <a class='category' href='/blog/categories/c-plus-plus/'>c++</a>, <a class='category' href='/blog/categories/computer-vision/'>computer vision</a>, <a class='category' href='/blog/categories/opencv/'>opencv</a>, <a class='category' href='/blog/categories/tutorials/'>tutorials</a>
+  
+</span>
+
+
+    </p>
+    
+      <div class="sharing">
+  
+  <a href="//twitter.com/share" class="twitter-share-button" data-url="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/" data-via="limaodepicole" data-counturl="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/" >Tweet</a>
+  
+  
+  
+</div>
+
+    
+    <p class="meta">	
+      
+        <a class="basic-alignment left" href="/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/" title="Previous Post: Parallel Genetic Algorithm in C++ using TBB">&laquo; Parallel Genetic Algorithm in C++ using TBB</a>
+      
+      
+        <a class="basic-alignment right" href="/blog/2015/12/06/solving-the-sliding-puzzle/" title="Next Post: Solving the sliding puzzle">Solving the sliding puzzle &raquo;</a>
+      
+    </p>
+  </footer>
+</article>
+
+  <section>
+    <h1>Comments</h1>
+    <div id="disqus_thread" aria-live="polite"><noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+</div>
+  </section>
+
+</div>
+
+<aside class="sidebar">
+  
+    <section>
+  <h1>Recent Posts</h1>
+  <ul id="recent_posts">
+    
+      <li class="post">
+        <a href="/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/">Parsing a Hand-drawn Hash Game</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/">Eye Tracking for Mouse Control in OpenCV</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/03/12/multithreaded-k-means-in-java/">Multithreaded K-Means in Java</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/27/mixing-assembly-and-c/">Mixing Assembly and C</a>
+      </li>
+    
+      <li class="post">
+        <a href="/blog/2016/02/21/factorial-function-in-assembly/">Factorial Function in X86_64 Assembly</a>
+      </li>
+    
+  </ul>
+</section>
+
+<section>
+  <h1>GitHub Repos</h1>
+  <ul id="gh_repos">
+    <li class="loading">Status updating&#8230;</li>
+  </ul>
+  
+  <a href="https://github.com/abnerrjo">@abnerrjo</a> on GitHub
+  
+  <script type="text/javascript">
+    $(document).ready(function(){
+        if (!window.jXHR){
+            var jxhr = document.createElement('script');
+            jxhr.type = 'text/javascript';
+            jxhr.src = '/javascripts/libs/jXHR.js';
+            var s = document.getElementsByTagName('script')[0];
+            s.parentNode.insertBefore(jxhr, s);
+        }
+
+        github.showRepos({
+            user: 'abnerrjo',
+            count: 0,
+            skip_forks: true,
+            target: '#gh_repos'
+        });
+    });
+  </script>
+  <script src="/javascripts/github.js" type="text/javascript"> </script>
+</section>
+
+
+
+
+
+  
+</aside>
+
+
+    </div>
+  </div>
+  <footer role="contentinfo"><p>
+  Copyright &copy; 2023 - Abner Araujo -
+  <span class="credit">Powered by <a href="http://octopress.org">Octopress</a></span>
+</p>
+
+</footer>
+  
+
+<script type="text/javascript">
+      var disqus_shortname = 'deforadouniverso';
+      
+        
+        // var disqus_developer = 1;
+        var disqus_identifier = 'http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/';
+        var disqus_url = 'http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/';
+        var disqus_script = 'embed.js';
+      
+    (function () {
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/' + disqus_script;
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    }());
+</script>
+
+
+
+
+
+
+
+  <script type="text/javascript">
+    (function(){
+      var twitterWidgets = document.createElement('script');
+      twitterWidgets.type = 'text/javascript';
+      twitterWidgets.async = true;
+      twitterWidgets.src = '//platform.twitter.com/widgets.js';
+      document.getElementsByTagName('head')[0].appendChild(twitterWidgets);
+    })();
+  </script>
+
+
+
+
+
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-90610419-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+</body>
+</html>

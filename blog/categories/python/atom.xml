@@ -1,0 +1,2302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+
+  <title><![CDATA[Category: Python | Abner Araujo]]></title>
+  <link href="http://abnerrjo.github.io/blog/categories/python/atom.xml" rel="self"/>
+  <link href="http://abnerrjo.github.io/"/>
+  <updated>2023-01-15T23:16:39+01:00</updated>
+  <id>http://abnerrjo.github.io/</id>
+  <author>
+    <name><![CDATA[Abner Araujo]]></name>
+    <email><![CDATA[abner.rjo@gmail.com]]></email>
+  </author>
+  <generator uri="http://octopress.org/">Octopress</generator>
+
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) Mesquita]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
+    <updated>2014-10-18T18:30:35-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
+    <content type="html"><![CDATA[<p>Ahhh, and good and old (or not so old) statistics.</p>
+
+<p>I create this software to help with my homework. In the end, just by doing it I was able to learn much more about statistical models. :)</p>
+
+<p>Also, this software was my first attempt in create something with Python GUI, Tkinter. Wow, compared to Swing this one is like heaven!</p>
+
+<p style="text-align:center;"><img src="/images/posts/mesquita.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>You can see the source code below. Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/e51ffc7453acf0af3426.js?file=Mesquita.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------------
+# Mesquita v1.0
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------------
+import math
+
+class MatematicaException(Exception): pass
+class ProbabilidadeException(Exception): pass
+class BinomialException(ProbabilidadeException): pass
+class HipergeometricoException(ProbabilidadeException): pass
+class GeometricoException(ProbabilidadeException): pass
+class PoissonException(ProbabilidadeException): pass
+class UniformeException(ProbabilidadeException): pass
+class ExponencialException(ProbabilidadeException): pass
+class NormalException(ProbabilidadeException): pass
+
+class Matematica:
+    #combina dois numeros inteiros, n &gt; p
+    @staticmethod
+    def combinacao(n, p):
+        if n &lt; p or p &lt; 0 or not(isinstance(n, int) and isinstance(p, int)):
+            raise MatematicaException(&quot;Parâmetros inválidos na combinação&quot;)
+        n_fatorado = reduce(lambda x, y: x * y, [x for x in range(n, n-p, -1)] + [1])
+        try:
+            return float(n_fatorado)/math.factorial(p)
+        except: return n_fatorado/math.factorial(p)
+
+#----------------------------------------------------------------
+# Modelos discretos
+#----------------------------------------------------------------
+class ModeloDiscreto:
+    #variacao do &#39;x&#39; na reta real
+    def variacao(self, x):
+        raise NotImplementedError()
+    #funcao de probabilidade
+    def f(self):
+        raise NotImplementedError()
+    #funcao de probabilidade acumulada
+    def F(self):
+        raise NotImplementedError()
+    #esperanca da v.a.
+    def e(self):
+        raise NotImplementedError()
+    #variancia da v.a.
+    def var(self):
+        raise NotImplementedError()
+#=================================================================
+class Bernoulli(ModeloDiscreto):
+    #p: chance de sucesso
+    def __init__(self, p):
+        try:
+            self.p = float(p)
+            if not 0 &lt;= self.p &lt;= 1:
+                raise ProbabilidadeException(&quot;Parametro p não é uma probabilidade&quot;)
+        except:
+            raise ProbabilidadeException(&quot;Parametro p não é uma probabilidade&quot;)
+    def fp(self):
+        return self.p
+    def e(self):
+        return self.p
+    def var(self):
+        return self.p*(1-self.p)
+    
+class Binomial(Bernoulli):
+    #n: numero de repeticoes, p: chance de sucesso
+    def __init__(self, n, p):
+        try:
+            self.n = int(n)
+        except:
+            raise BinomialException(&quot;Parâmetro n deve ser um numero inteiro&quot;)
+        Bernoulli.__init__(self, p)
+    def variacao(self):
+        return [x for x in range(0, self.n + 1)]
+    def fp(self, x):
+        if not x in self.variacao():
+            raise BinomialException(&quot;x está fora da variação da v.a.&quot;)
+        combinacao = Matematica.combinacao(self.n, x)
+        chance_sucesso = math.pow(self.p, x)
+        chance_fracasso = math.pow(1 - self.p, self.n - x)
+        return combinacao*chance_sucesso*chance_fracasso
+    def F(self, x):
+        if x &lt; 0:
+            return 0
+        elif x &gt;= self.n:
+            return 1
+        count = 0
+        for p in range(0, int(x)+1):
+            count += self.fp(p)
+        return count
+    def e(self):
+        return self.n*self.p
+    def var(self):
+        return self.n*self.p*(1-self.p)
+        
+class Hipergeometrico(ModeloDiscreto):
+    #N: tamanho da populacao
+    #n: tamanho da amostra
+    #r: numero de elementos favoraveis
+    def __init__(self, N, r, n):
+        try:
+            self.N = int(N)
+            self.r = int(r)
+            self.n = int(n)
+            if self.N &lt; self.n or self.N &lt; self.r:
+                raise HipergeometricoException(&quot;Parâmetros inválidos&quot;)
+        except:
+            raise HipergeometricoException(&quot;Parâmetros inválidos&quot;)
+    def variacao(self):
+        return [x for x in range(max(0, self.n-(self.N-self.r)), min(self.r, self.n) + 1)]
+    def fp(self, x):
+        if not x in self.variacao():
+            raise HipergeometricoException(&quot;x está fora da variação da v.a.&quot;)
+        a = Matematica.combinacao(self.r, x)
+        b = Matematica.combinacao(self.N - self.r, self.n - x)
+        c = Matematica.combinacao(self.N, self.n)
+        return a*b/c
+    def F(self, x):
+        if x &lt; max(0, self.n-(self.N-self.r)):
+            return 0
+        elif x &gt;= min(self.r, self.n):
+            return 1
+        count = 0
+        for p in range(max(0, self.n-(self.N-self.r)), int(x)+1):
+            count += self.fp(p)
+        return count
+    def e(self):
+        return self.n*(self.r/float(self.N))
+    def var(self):
+        return self.n*(self.r/float(self.N))*(1-self.r/float(self.N))*(self.N-self.n)/float(self.N-1)
+
+class Geometrico(Bernoulli):
+    #p: chance de sucesso
+    def __init__(self, p):
+        Bernoulli.__init__(self, p)
+    def variacao(self, x):
+        return isinstance(x, int) and x &gt;= 1
+    def fp(self, x):
+        if not self.variacao(x):
+            raise GeometricoException(&quot;x está fora da variação da v.a.&quot;)
+        return math.pow(1-self.p, x-1)*self.p
+    def F(self, x):
+        if x &lt;= 1:
+            return 0
+        count = 0
+        for p in range(1, int(x)+1):
+            count += self.fp(p)
+        return count
+    def e(self):
+        return 1/float(self.p)
+    def var(self):
+        return (1-self.p)/float(math.pow(self.p, 2))
+
+class Poisson(ModeloDiscreto):
+    #alfa: media
+    def __init__(self, alfa):
+        try:
+            self.alfa = float(alfa)
+        except:
+            raise PoissonException(&quot;Parâmetro inválido&quot;)
+    def variacao(self, x):
+        return isinstance(x, int) and x &gt;= 0
+    def fp(self, x):
+        if not self.variacao(x):
+            raise PoissonException(&quot;x está fora da variação da v.a.&quot;)
+        return math.pow(math.e, -self.alfa)*math.pow(self.alfa, x)/float(math.factorial(x))
+    def F(self, x):
+        if x &lt;= 0:
+            return 0
+        count = 0
+        for p in range(0, int(x)+1):
+            count += self.fp(p)
+        return count
+    def e(self):
+        return self.alfa
+    def var(self):
+        return self.alfa
+    
+
+#----------------------------------------------------------------
+# Modelos continuos
+#----------------------------------------------------------------
+class ModeloContinuo:
+    #funcao distribuicao de probabilidade entre dois pontos
+    def fdp(self, x, y):
+        raise NotImplementedError()
+    #funcao de probabilidade acumulada de -infinito ate o ponto
+    def F(self, x):
+        raise NotImplementedError()
+    #esperanca da v.a.
+    def e(self):
+        raise NotImplementedError()
+    #variancia da v.a.
+    def var(self):
+        raise NotImplementedError()
+#=================================================================    
+class Uniforme(ModeloContinuo):
+    def __init__(self, a, b):
+        try:
+            self.a = float(a)
+            self.b = float(b)
+            if self.a &gt;= self.b:
+                raise UniformeException(&quot;Parametro a é maior ou igual que o b&quot;)
+        except: raise UniformeException(&quot;Parâmetros inválidos&quot;)
+    def F(self, x):
+        if x &lt;= self.a:
+            return 0
+        elif x &gt;= self.b:
+            return 1
+        return (x-self.a)/float(self.b-self.a)
+    def fdp(self, x, y):
+        if y &lt; x:
+            raise UniformeException(&quot;Ponto final é menor que ponto inicial&quot;)
+        return self.F(y) - self.F(x)
+    def e(self):
+        return (self.a + self.b)/2.0
+    def var(self):
+        return math.pow(self.b - self.a, 2)/12.0
+
+class Exponencial(ModeloContinuo):
+    #alfa: o inverso da media
+    def __init__(self, alfa):
+        try:
+            self.alfa = float(alfa)
+        except: raise ExponencialException(&quot;Parâmetro inválido&quot;)
+        if self.alfa &lt; 0:
+                raise ExponencialException(&quot;Parâmetro deve ser maior que 0&quot;)
+    def F(self, x):
+        if x &lt;= 0:
+            return 0
+        return 1 - math.pow(math.e, -self.alfa*x)
+    def fdp(self, x, y):
+        if y &lt; x:
+            raise ExponencialException(&quot;Ponto final é menor que o ponto inicial&quot;)
+        return self.F(y) - self.F(x)
+    def e(self):
+        return 1/float(self.alfa)
+    def var(self):
+        return 1/float(math.pow(self.alfa, 2))
+
+
+class Normal(ModeloContinuo):
+    #u: media
+    #o2: variancia
+    def __init__(self, u, o2):
+        try:
+            self.u = float(u)
+            self.o2 = float(o2)
+        except:
+            raise NormalException(&quot;Parâmetros inválidos&quot;)
+        #tabela abaixo
+        self.tabela = {0.0: 0.5, 0.25: 0.5987, 2.0: 0.9772, 3.0: 0.9987, 0.5: 0.6915, 1.0: 0.8413, 3.37: 0.9996, 0.75: 0.7734, 2.83: 0.9977, 1.17: 0.879, 0.67: 0.7486, 2.28: 0.9887, 3.29: 0.9995, 3.21: 0.9993, 0.83: 0.7967, 0.6: 0.7257, 2.91: 0.9982, 3.5: 0.9998, 1.34: 0.9099, 2.25: 0.9878, 0.85: 0.8023, 3.51: 0.9998, 0.96: 0.8315, 0.66: 0.7454, 3.27: 0.9995, 0.78: 0.7823, 3.45: 0.9997, 1.67: 0.9525, 1.43: 0.9236, 2.65: 0.996, 2.03: 0.9788, 3.54: 0.9998, 2.36: 0.9909, 3.46: 0.9997, 0.14: 0.5557, 0.37: 0.6443, 1.2: 0.8849, 0.4: 0.6554, 2.62: 0.9956, 3.55: 0.9998, 2.04: 0.9793, 1.29: 0.9015, 0.46: 0.6772, 3.49: 0.9998, 0.56: 0.7123, 1.73: 0.9582, 1.51: 0.9345, 0.36: 0.6406, 3.41: 0.9997, 0.22: 0.5871, 1.09: 0.8621, 0.95: 0.8289, 0.26: 0.6026, 1.61: 0.9463, 3.24: 0.9994, 1.84: 0.9671, 2.06: 0.9803, 0.63: 0.7357, 1.81: 0.9649, 3.3: 0.9995, 1.54: 0.9382, 2.02: 0.9783, 1.95: 0.9744, 2.57: 0.9949, 2.4: 0.9918, 2.73: 0.9968, 1.9: 0.9713, 2.31: 0.9896, 0.42: 0.6628, 3.58: 0.9998, 2.52: 0.9941, 2.76: 0.9971, 2.84: 0.9977, 2.64: 0.9959, 2.17: 0.985, 2.97: 0.9985, 3.23: 0.9994, 1.94: 0.9738, 1.88: 0.9699, 3.33: 0.9996, 2.75: 0.997, 1.68: 0.9535, 2.43: 0.9925, 1.33: 0.9082, 1.85: 0.9678, 2.35: 0.9906, 2.27: 0.9884, 2.19: 0.9857, 1.77: 0.9616, 0.31: 0.6217, 1.96: 0.975, 3.14: 0.9992, 2.51: 0.994, 2.22: 0.9868, 0.73: 0.7673, 1.04: 0.8508, 1.49: 0.9319, 1.18: 0.881, 1.58: 0.9429, 1.01: 0.8438, 1.62: 0.9474, 0.1: 0.5398, 2.6: 0.9953, 1.72: 0.9573, 2.15: 0.9842, 1.76: 0.9608, 0.47: 0.6808, 1.05: 0.8531, 2.92: 0.9982, 1.1: 0.8643, 1.47: 0.9292, 3.13: 0.9991, 3.28: 0.9995, 0.09: 0.5359, 3.31: 0.9995, 0.76: 0.7764, 2.47: 0.9932, 1.63: 0.9484, 0.15: 0.5596, 3.07: 0.9989, 1.37: 0.9147, 0.7: 0.758, 2.85: 0.9978, 2.54: 0.9945, 1.23: 0.8907, 2.32: 0.9898, 0.97: 0.834, 0.74: 0.7704, 0.51: 0.695, 0.64: 0.7389, 2.55: 0.9946, 0.45: 0.6736, 2.78: 0.9973, 0.54: 0.7054, 1.44: 0.9251, 0.55: 0.7088, 0.01: 0.504, 3.39: 0.9997, 2.89: 0.9981, 2.81: 0.9975, 1.14: 0.8729, 1.8: 0.9641, 3.18: 0.9993, 1.22: 0.8888, 1.86: 0.9686, 3.16: 0.9992, 1.99: 0.9767, 3.02: 0.9987, 1.98: 0.9761, 3.26: 0.9994, 0.04: 0.516, 3.08: 0.999, 2.07: 0.9808, 0.34: 0.6331, 0.61: 0.7291, 3.11: 0.9991, 2.14: 0.9838, 3.03: 0.9988, 2.41: 0.992, 0.16: 0.5636, 0.41: 0.6591, 0.48: 0.6844, 1.36: 0.9131, 0.98: 0.8365, 3.19: 0.9993, 3.06: 0.9989, 3.43: 0.9997, 2.98: 0.9986, 3.35: 0.9996, 2.9: 0.9981, 1.5: 0.9332, 0.89: 0.8133, 1.64: 0.9495, 0.24: 0.5948, 0.52: 0.6985, 2.05: 0.9798, 1.59: 0.9441, 1.25: 0.8944, 0.3: 0.6179, 2.56: 0.9948, 2.63: 0.9957, 0.21: 0.5832, 2.71: 0.9966, 0.23: 0.591, 2.79: 0.9974, 2.12: 0.983, 0.71: 0.7611, 0.19: 0.5753, 1.87: 0.9693, 2.45: 0.9929, 1.45: 0.9265, 3.52: 0.9998, 1.89: 0.9706, 3.44: 0.9997, 3.36: 0.9996, 3.22: 0.9994, 0.07: 0.5279, 1.06: 0.8554, 3.53: 0.9998, 2.59: 0.9952, 1.53: 0.937, 3.47: 0.9997, 0.58: 0.719, 2.7: 0.9965, 3.56: 0.9998, 2.94: 0.9984, 0.28: 0.6103, 0.99: 0.8389, 1.41: 0.9207, 3.48: 0.9997, 1.7: 0.9554, 0.38: 0.648, 1.74: 0.9591, 1.78: 0.9625, 0.11: 0.5438, 1.38: 0.9162, 2.38: 0.9913, 1.92: 0.9726, 0.92: 0.8212, 1.82: 0.9656, 1.71: 0.9564, 0.35: 0.6368, 1.11: 0.8665, 0.13: 0.5517, 0.94: 0.8264, 1.12: 0.8686, 2.46: 0.9931, 1.55: 0.9394, 1.75: 0.9599, 0.68: 0.7517, 1.97: 0.9756, 0.44: 0.67, 2.68: 0.9963, 1.15: 0.8749, 2.09: 0.9817, 0.77: 0.7794, 1.28: 0.8997, 2.01: 0.9778, 0.53: 0.7019, 3.4: 0.9997, 3.57: 0.9998, 1.26: 0.8962, 2.3: 0.9893, 2.33: 0.9901, 1.31: 0.9049, 2.39: 0.9916, 0.82: 0.7939, 2.99: 0.9986, 0.84: 0.7995, 0.79: 0.7852, 0.81: 0.791, 0.59: 0.7224, 0.33: 0.6293, 2.26: 0.9881, 2.42: 0.9922, 0.86: 0.8051, 1.79: 0.9633, 1.03: 0.8485, 0.88: 0.8106, 2.34: 0.9904, 1.66: 0.9515, 0.05: 0.5199, 2.74: 0.9969, 2.21: 0.9864, 1.93: 0.9732, 2.61: 0.9955, 1.57: 0.9418, 2.2: 0.9861, 0.06: 0.5239, 3.17: 0.9992, 0.49: 0.6879, 0.2: 0.5793, 2.29: 0.989, 0.62: 0.7324, 1.13: 0.8708, 2.37: 0.9911, 2.13: 0.9834, 2.5: 0.9938, 3.2: 0.9993, 0.8: 0.7881, 1.3: 0.9032, 0.29: 0.6141, 2.48: 0.9934, 2.24: 0.9875, 2.44: 0.9927, 1.19: 0.883, 0.69: 0.7549, 0.87: 0.8078, 2.08: 0.9812, 2.82: 0.9976, 1.21: 0.8869, 2.95: 0.9984, 1.39: 0.9177, 1.91: 0.9719, 3.04: 0.9988, 3.15: 0.9992, 0.18: 0.5714, 1.52: 0.9357, 0.39: 0.6517, 0.93: 0.8238, 2.53: 0.9943, 1.24: 0.8925, 2.11: 0.9826, 2.16: 0.9846, 2.96: 0.9985, 2.49: 0.9936, 0.91: 0.8186, 2.67: 0.9962, 0.27: 0.6064, 0.72: 0.7642, 2.69: 0.9964, 2.18: 0.9854, 2.77: 0.9972, 2.87: 0.9979, 1.65: 0.9505, 2.1: 0.9821, 2.93: 0.9983, 0.65: 0.7422, 0.9: 0.8159, 1.07: 0.8577, 1.08: 0.8599, 1.32: 0.9066, 3.38: 0.9996, 3.09: 0.999, 2.8: 0.9974, 0.02: 0.508, 3.01: 0.9987, 2.23: 0.9871, 0.17: 0.5675, 0.43: 0.6664, 3.1: 0.999, 1.27: 0.898, 1.4: 0.9192, 2.66: 0.9961, 1.16: 0.877, 3.12: 0.9991, 2.58: 0.9951, 1.46: 0.9279, 0.08: 0.5319, 0.12: 0.5478, 1.69: 0.9545, 1.48: 0.9306, 1.42: 0.9222, 1.02: 0.8461, 1.56: 0.9406, 1.83: 0.9664, 3.42: 0.9997, 2.88: 0.998, 0.03: 0.512, 3.32: 0.9995, 3.25: 0.9994, 3.34: 0.9996, 3.05: 0.9989, 1.6: 0.9452, 2.86: 0.9979, 0.32: 0.6255, 1.35: 0.9115, 0.57: 0.7157, 2.72: 0.9967}
+    def F(self, x):
+        xNormalizada = (x - self.u)/float(math.sqrt(self.o2))
+        if xNormalizada &lt; -3.5:
+            return 0
+        elif xNormalizada &gt; 3.5:
+            return 1
+        chave = float(&quot;%.2f&quot; % math.fabs(xNormalizada))
+        if xNormalizada &lt; 0:
+            return 1 - self.tabela[chave]
+        else:
+            return self.tabela[chave]
+    def fdp(self, x, y):
+        if y &lt; x:
+            raise NormalException(&quot;Ponto final é menor que o ponto inicial&quot;)
+        return self.F(y) - self.F(x)
+    def e(self):
+        return self.u
+    def var(self):
+        return self.o2
+
+#----------------------------------------------------------------
+# Interface gráfica
+#----------------------------------------------------------------  
+if __name__ == &#39;__main__&#39;:
+    from Tkinter import *
+    import tkMessageBox
+    class JanelaPrincipal:
+        def __init__(self, top_level):
+            self.frame1 = Frame(top_level)
+            self.frame1.pack(side=LEFT)
+            self.frame2 = Frame(top_level)
+            self.frame2.pack(side=RIGHT)
+            
+            width = 50
+            height = 5
+            Label(self.frame1, text=&quot;Modelos discretos:&quot;).pack()
+            self.binomial = Button(self.frame1, text=&quot;Modelo binomial&quot;)
+            self.binomial[&#39;width&#39;] = width
+            self.binomial[&#39;height&#39;] = height
+            self.hipergeometrico = Button(self.frame1, text=&quot;Modelo hipergeométrico&quot;)
+            self.hipergeometrico[&#39;width&#39;] = width
+            self.hipergeometrico[&#39;height&#39;] = height
+            self.geometrico = Button(self.frame1, text=&quot;Modelo geométrico&quot;)
+            self.geometrico[&#39;width&#39;] = width
+            self.geometrico[&#39;height&#39;] = height
+            self.poisson = Button(self.frame1, text=&quot;Modelo de Poisson&quot;)
+            self.poisson[&#39;width&#39;] = width
+            self.poisson[&#39;height&#39;] = height
+            Label(self.frame2, text=&quot;Modelos contínuos:&quot;).pack()
+            self.uniforme = Button(self.frame2, text=&quot;Modelo uniforme&quot;)
+            self.uniforme[&#39;width&#39;] = width
+            self.uniforme[&#39;height&#39;] = height
+            self.exponencial = Button(self.frame2, text=&quot;Modelo exponencial&quot;)
+            self.exponencial[&#39;width&#39;] = width
+            self.exponencial[&#39;height&#39;] = height
+            self.normal = Button(self.frame2, text=&quot;Modelo normal&quot;)
+            self.normal[&#39;width&#39;] = width
+            self.normal[&#39;height&#39;] = height
+            
+            self.binomial.pack()
+            self.hipergeometrico.pack()
+            self.geometrico.pack()
+            self.poisson.pack()
+            self.uniforme.pack()
+            self.exponencial.pack()
+            self.normal.pack()
+
+            self.binomial.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.hipergeometrico.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.geometrico.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.poisson.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.uniforme.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.exponencial.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+            self.normal.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao)
+        def clica_botao(self, event):
+            janela = Tk()
+            if event.widget == self.binomial:
+                janela.title(&quot;Modelo binomial&quot;)
+                JanelaBinomial(janela)
+            elif event.widget == self.hipergeometrico:
+                janela.title(&quot;Modelo hipergeométrico&quot;)
+                JanelaHipergeometrico(janela)
+            elif event.widget == self.geometrico:
+                janela.title(&quot;Modelo geométrico&quot;)
+                JanelaGeometrico(janela)
+            elif event.widget == self.poisson:
+                janela.title(&quot;Modelo de Poisson&quot;)
+                JanelaPoisson(janela)
+            elif event.widget == self.uniforme:
+                janela.title(&quot;Modelo uniforme&quot;)
+                JanelaUniforme(janela)
+            elif event.widget == self.exponencial:
+                janela.title(&quot;Modelo exponencial&quot;)
+                JanelaExponencial(janela)
+            elif event.widget == self.normal:
+                janela.title(&quot;Modelo normal&quot;)
+                JanelaNormal(janela)
+            janela.mainloop()
+
+    class Grafico:
+        def __init__(self, raiz):
+            self.width = 400
+            self.height = 400
+            self.canvas = Canvas(raiz, width=self.width, height=self.height)
+            self.canvas.pack()
+        def set_modelo(self, modelo_discreto, funcao, limiteX1, limiteX2, acumulada):
+            self.modelo = modelo_discreto
+            self.funcao = funcao
+            self.desenha(limiteX1, limiteX2, acumulada)
+            
+    class GraficoDiscreto(Grafico):
+        def desenha(self, limiteX1, limiteX2, acumulada):
+            self.canvas.delete(&quot;all&quot;)
+            try:
+                variacao = self.modelo.variacao()
+            except:
+                if isinstance(self.modelo, Geometrico):
+                    i = 1
+                    while(self.modelo.F(i) &lt; 0.95):
+                        i += 1
+                        if i &gt; 100:
+                            break
+                    variacao = [x for x in range(1, i + 1)]
+                elif isinstance(self.modelo, Poisson):
+                    i = 0
+                    while(self.modelo.F(i) &lt; 0.95):
+                        i += 1
+                        if i &gt; 100:
+                            break
+                    variacao = [x for x in range(0, i + 1)]
+            variacao.insert(0, variacao[0] - 1)
+            variacao.insert(0, variacao[0] - 2)
+            variacao.append(variacao[-1] + 1)
+            variacao.append(variacao[-1] + 2)
+            #retas x e y, respectivamente
+            reta_y_posicao_x = self.width/float(len(variacao)) * (math.fabs(0 - variacao[0])) + 20
+            self.canvas.create_line(0, self.height - 20, self.width, self.height - 20)
+            if 0 in variacao:
+                self.canvas.create_line(reta_y_posicao_x, 0, reta_y_posicao_x, self.height)
+            else:
+                reta_y_posicao_x = 20
+            #desenha os pontos
+            for ponto in variacao:
+                try:
+                    probabilidade = self.funcao(ponto)
+                    x = self.width/float(len(variacao)) * (math.fabs(ponto - variacao[0])) + 20
+                    y = (self.height - 40) * probabilidade
+                    if limiteX1 != None and limiteX2 != None:
+                        if limiteX1 &lt;= ponto &lt;= limiteX2:
+                            self.canvas.create_oval(x - 2, self.height - y - 22, x + 2, self.height - y - 18, fill=&#39;red&#39;)
+                            self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;red&#39;)
+                        else:
+                            self.canvas.create_oval(x - 2, self.height - y - 22, x + 2, self.height - y - 18, fill=&#39;black&#39;)
+                            self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;black&#39;)
+                    else:
+                        self.canvas.create_oval(x - 2, self.height - y - 22, x + 2, self.height - y - 18, fill=&#39;black&#39;)
+                        self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;black&#39;)
+                except: pass
+            limite = 11
+            if limite &gt; len(variacao):
+                limite = len(variacao)
+            #desenha metricas na reta x
+            for i in range(1, limite):
+                index = i * (len(variacao) / float(limite))
+                if index != int(index):
+                    index += 1
+                index = int(index)
+                x = self.width/float(len(variacao)) * (math.fabs(variacao[index] - variacao[0])) + 20
+                self.canvas.create_text(x, self.height - 10, text=str(variacao[index]))
+            #desenha metricas probabilidade
+            for i in range(1, 11):
+                y = self.height * i/11.0 
+                self.canvas.create_text(reta_y_posicao_x - 10, self.height - y - 20, text=str(0.1 * i))
+
+    class JanelaDiscreta:
+        def __init__(self, top_level, *parametros):
+            self.top_level = top_level
+            self.frame_left = Frame(top_level)
+            self.frame_left.pack(side=LEFT)
+            self.frame_right = Frame(top_level)
+            self.frame_right.pack(side=RIGHT)
+            self.frame_params = {}
+            self.entries = {}
+            for i in range(len(parametros)):
+                parametro = parametros[i]
+                self.frame_params[parametro] = Frame(self.frame_left)
+                self.frame_params[parametro].pack()
+                Label(self.frame_params[parametro], text=parametro).pack(side=LEFT)
+                self.entries[parametro] = Entry(self.frame_params[parametro])
+                self.entries[parametro].pack()
+            self.frame_botao_ok = Frame(self.frame_left)
+            self.frame_botao_ok.pack()
+            self.botao_ok = Button(self.frame_botao_ok, text=&quot;Gerar&quot;)
+            self.botao_ok[&#39;width&#39;] = 30
+            self.botao_ok.pack()
+            self.botao_ok.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao_ok)
+            self.frame_fp = Frame(self.frame_right)
+            self.frame_fp.pack(side=LEFT)
+            self.frame_fda = Frame(self.frame_right)
+            self.frame_fda.pack(side=LEFT)
+            Label(self.frame_fp, text=&quot;Função de probabilidade:&quot;).pack()
+            self.graficoFd = GraficoDiscreto(self.frame_fp)
+            Label(self.frame_fda, text=&quot;Função de distribuição acumulada:&quot;).pack()
+            self.graficoF = GraficoDiscreto(self.frame_fda)
+            self.frame_1 = Frame(self.frame_left)
+            self.frame_2 = Frame(self.frame_1)
+            self.frame_2.pack()
+            Label(self.frame_2, text=&quot;       P(X = x):&quot;).pack(side=LEFT)
+            self.x = Entry(self.frame_2)
+            self.x.pack()
+            self.frame_3 = Frame(self.frame_1)
+            self.frame_3.pack()
+            Label(self.frame_3, text=&quot;             F(x):&quot;).pack(side=LEFT)
+            self.F = Entry(self.frame_3)
+            self.F.pack()
+            self.frame_4 = Frame(self.frame_1)
+            self.frame_4.pack()
+            self.botao_calcula = Button(self.frame_4, text=&quot;Calcular&quot;)
+            self.botao_calcula[&#39;width&#39;] = 30
+            self.botao_calcula.pack()
+            self.botao_calcula.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao_calcula)
+            self.frame_5 = Frame(self.frame_1)
+            self.frame_5.pack()
+            self.labelE = Label(self.frame_5, text=&quot;E(X): &quot;)
+            self.labelE.pack()
+            self.labelVar = Label(self.frame_5, text=&quot;Var(X): &quot;)
+            self.labelVar.pack()
+            self.labelP = Label(self.frame_5)
+            self.labelP.pack()
+            self.labelF = Label(self.frame_5)
+            self.labelF.pack()
+        def clica_botao_ok(self, event):
+            self.graficoFd.set_modelo(self.modelo, self.modelo.fp, None, None, False)
+            self.graficoF.set_modelo(self.modelo, self.modelo.F, None, None, True)
+            self.frame_1.pack()
+            try:
+                self.labelE.setParent(None)
+                self.labelVar.setParent(None)
+            except: pass
+            self.labelE[&#39;text&#39;] = &quot;E(X): %.5f&quot; % self.modelo.e()
+            self.labelVar[&#39;text&#39;] = &quot;Var(X): %.5f&quot; % self.modelo.var()
+        def clica_botao_calcula(self, event):
+            try:
+                x = int(self.x.get())
+                try:
+                    self.labelP[&#39;text&#39;] = &quot;P(X = %d) = %.5f&quot; % (x, self.modelo.fp(x))
+                    self.graficoFd.set_modelo(self.modelo, self.modelo.fp, x, x, False)
+                except Exception, e:
+                    tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+            except:
+                if self.x.get().replace(&quot; &quot;,&quot;&quot;) != &quot;&quot;:
+                    tkMessageBox.showwarning(&quot;Ops...&quot;, &quot;x deve ser um número inteiro&quot;, parent=self.top_level)
+                self.graficoFd.set_modelo(self.modelo, self.modelo.fp, None, None, False)
+                self.labelP[&#39;text&#39;] = &quot;&quot;
+            try:
+                x = float(self.F.get())
+                self.labelF[&#39;text&#39;] = &quot;F(%.2f) = %.5f&quot; % (x, self.modelo.F(x))
+                self.graficoF.set_modelo(self.modelo, self.modelo.F, 0, x, True)
+            except:
+                self.graficoF.set_modelo(self.modelo, self.modelo.F, None, None, True)
+                self.labelF[&#39;text&#39;] = &quot;&quot;
+        
+    class JanelaBinomial(JanelaDiscreta):
+        def __init__(self, top_level):
+            JanelaDiscreta.__init__(self, top_level, &quot;Parâmetro n&quot;, &quot;Parâmetro p&quot;)
+        def clica_botao_ok(self, event):
+            n = self.entries[&quot;Parâmetro n&quot;].get()
+            p = self.entries[&quot;Parâmetro p&quot;].get()
+            try:
+                self.modelo = Binomial(n, p)
+                JanelaDiscreta.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+
+    class JanelaHipergeometrico(JanelaDiscreta):
+        def __init__(self, top_level):
+            JanelaDiscreta.__init__(self, top_level, &quot;Parâmetro N&quot;, &quot;Parâmetro r&quot;, &quot;Parâmetro n&quot;)
+        def clica_botao_ok(self, event):
+            N = self.entries[&quot;Parâmetro N&quot;].get()
+            r = self.entries[&quot;Parâmetro r&quot;].get()
+            n = self.entries[&quot;Parâmetro n&quot;].get()
+            try:
+                self.modelo = Hipergeometrico(N, r, n)
+                JanelaDiscreta.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+
+    class JanelaGeometrico(JanelaDiscreta):
+        def __init__(self, top_level):
+            JanelaDiscreta.__init__(self, top_level, &quot;Parâmetro p&quot;)
+        def clica_botao_ok(self, event):
+            p = self.entries[&quot;Parâmetro p&quot;].get()
+            try:
+                self.modelo = Geometrico(p)
+                JanelaDiscreta.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+
+    class JanelaPoisson(JanelaDiscreta):
+        def __init__(self, top_level):
+            JanelaDiscreta.__init__(self, top_level, &quot;Parâmetro gama&quot;)
+        def clica_botao_ok(self, event):
+            alfa = self.entries[&quot;Parâmetro gama&quot;].get()
+            try:
+                self.modelo = Poisson(alfa)
+                JanelaDiscreta.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+
+
+    class GraficoContinuo(Grafico):
+        def desenha(self, limiteX1, limiteX2, acumulada):
+            self.canvas.delete(&quot;all&quot;)
+            if isinstance(self.modelo, Uniforme):
+                a = self.modelo.a
+                b = self.modelo.b + 1
+            elif isinstance(self.modelo, Exponencial):
+                a = -1
+                b = 0
+                while self.modelo.F(b) &lt; 0.995:
+                    b += 1
+                    if b &gt; 100:
+                        break
+            elif isinstance(self.modelo, Normal):
+                a = 0
+                while self.modelo.F(a) &gt; 0:
+                    a -= 1
+                b = 0
+                while self.modelo.F(b) &lt; 1:
+                    b += 1
+            l = math.fabs(b-a)/1000.0 
+            tamanho = math.fabs(b-a) 
+            variacao = [x*l+a for x in range(0, 1000)]
+            #retas x e y, respectivamente
+            reta_y_posicao_x = self.width/float(tamanho) * (math.fabs(0 - variacao[0])) + 20
+            self.canvas.create_line(0, self.height - 20, self.width, self.height - 20)
+            if variacao[0] &lt;= 0 &lt;= variacao[-1]:
+                self.canvas.create_line(reta_y_posicao_x, 0, reta_y_posicao_x, self.height)
+            else:
+                reta_y_posicao_x = 20
+            #desenha os pontos
+            for indice, ponto in enumerate(variacao):
+                try:
+                    if acumulada:
+                        probabilidade = self.funcao(ponto)
+                    else:
+                        probabilidade = self.funcao(variacao[indice], variacao[indice+1]) * 100
+                    x = self.width/float(tamanho) * (math.fabs(ponto - variacao[0])) + 20
+                    y = (self.height - 40) * probabilidade
+                    if limiteX1 != None and limiteX2 != None:
+                        if limiteX1 &lt;= ponto &lt;= limiteX2:
+                            self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - y - 20, fill=&#39;red&#39;)
+                            self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;red&#39;)
+                        else:
+                            self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - y - 20, fill=&#39;black&#39;)
+                            self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;black&#39;)
+                    else:
+                        self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - y - 20, fill=&#39;black&#39;)
+                        self.canvas.create_line(x, self.height - y - 20, x, self.height - 20, fill=&#39;black&#39;)
+                except: pass
+            limite = 11
+            #desenha metricas na reta x
+            for i in range(1, limite):
+                index = i * len(variacao) / float(limite)
+                index = int(index) 
+                tamanhoInicial = math.fabs(variacao[index] - variacao[0])
+                tamanhoTotal = math.fabs(variacao[-1] - variacao[0])
+                factor = tamanhoInicial / float(tamanhoTotal) 
+                x = self.width * factor + 20
+                self.canvas.create_text(x, self.height - 10, text=str(variacao[index]))
+            #desenha metricas probabilidade
+            for i in range(1, 11):
+                y = self.height * i/11.0 
+                self.canvas.create_text(reta_y_posicao_x - 10, self.height - y - 20, text=str(0.1 * i))
+
+        def desenha22(self, limiteX1, limiteX2, acumulada):
+            self.canvas.delete(&quot;all&quot;)
+            if isinstance(self.modelo, Uniforme):
+                variacao = [x for x in range(int(self.modelo.a * 100), int((self.modelo.b + 1) * 100 ))]
+            elif isinstance(self.modelo, Exponencial):
+                variacao = [x for x in range(0, 10 * 100)]
+            elif isinstance(self.modelo, Normal):
+                inflexao = 3.5 * self.modelo.o2 + self.modelo.u
+                inicial = (self.modelo.u - inflexao) * 100
+                final = (self.modelo.u + inflexao) * 100
+                variacao = [x for x in range(int(inicial), int(final))]
+            #retas x e y, respectivamente
+            reta_y_posicao_x = (self.width - 20)/float(len(variacao)) * (math.fabs(0 - variacao[0])) + 40
+            self.canvas.create_line(0, self.height - 20, self.width, self.height - 20)
+            self.canvas.create_line(reta_y_posicao_x, 0, reta_y_posicao_x, self.height)
+            #desenha os pontos
+            for ponto in variacao:
+                if acumulada:
+                    probabilidade = self.funcao(ponto/100.0)
+                else:
+                    probabilidade = self.funcao(ponto/100.0, ponto/100.0 + 1)
+                x = (self.width+40)/float(len(variacao)) * (math.fabs(ponto - variacao[0])) + 40
+                y = (self.height - 30) * probabilidade
+                if limiteX1 != None and limiteX2 != None:
+                    if limiteX1 &lt;= ponto/100.0 + 0.5 &lt;= limiteX2:
+                        self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - 20, fill=&#39;red&#39;)
+                    else:
+                        self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - 20, fill=&#39;black&#39;)
+                else:
+                    self.canvas.create_line(x, self.height - y - 20, x + 1, self.height - 20, fill=&#39;black&#39;)
+            limite = 11
+            if limite &gt; len(variacao):
+                limite = len(variacao)
+            #desenha metricas na reta x
+            for i in range(1, limite):
+                index = i * (len(variacao) / float(limite))
+                if index != int(index):
+                    index += 1
+                index = int(index)
+                x = (self.width - 20)/float(len(variacao)) * (math.fabs(variacao[index] - variacao[0])) + 40
+                self.canvas.create_text(x, self.height - 10, text=&quot;%.2f&quot; % (variacao[index]/100.0))
+            #desenha metricas probabilidade
+            for i in range(1, 11):
+                y = self.height / 11.0 * i 
+                self.canvas.create_text(reta_y_posicao_x - 20, self.height - y - 10, text=str(0.1 * i))
+
+    class JanelaContinua:
+        def __init__(self, top_level, *parametros):
+            self.top_level = top_level
+            self.frame_left = Frame(top_level)
+            self.frame_left.pack(side=LEFT)
+            self.frame_right = Frame(top_level)
+            self.frame_right.pack(side=RIGHT)
+            self.frame_params = {}
+            self.entries = {}
+            for i in range(len(parametros)):
+                parametro = parametros[i]
+                self.frame_params[parametro] = Frame(self.frame_left)
+                self.frame_params[parametro].pack()
+                Label(self.frame_params[parametro], text=&quot;        &quot; +parametro).pack(side=LEFT)
+                self.entries[parametro] = Entry(self.frame_params[parametro])
+                self.entries[parametro].pack()
+            self.frame_botao_ok = Frame(self.frame_left)
+            self.frame_botao_ok.pack()
+            self.botao_ok = Button(self.frame_botao_ok, text=&quot;Gerar&quot;)
+            self.botao_ok[&#39;width&#39;] = 35
+            self.botao_ok.pack()
+            self.botao_ok.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao_ok)
+            self.frame_fp = Frame(self.frame_right)
+            self.frame_fp.pack(side=LEFT)
+            self.frame_fda = Frame(self.frame_right)
+            self.frame_fda.pack(side=LEFT)
+            Label(self.frame_fp, text=&quot;Função distribuição de probabilidade:&quot;).pack()
+            self.graficoFd = GraficoContinuo(self.frame_fp)
+            Label(self.frame_fda, text=&quot;Função de distribuição acumulada:&quot;).pack()
+            self.graficoF = GraficoContinuo(self.frame_fda)
+            self.frame_1 = Frame(self.frame_left)
+            self.frame_2 = Frame(self.frame_1)
+            self.frame_2.pack()
+            Label(self.frame_2, text=&quot;P(a &lt;= x &lt;= b):&quot;).pack(side=LEFT)
+            self.x1 = Entry(self.frame_2)
+            self.x1.pack()
+            self.x2 = Entry(self.frame_2)
+            self.x2.pack(side=RIGHT)
+            self.frame_3 = Frame(self.frame_1)
+            self.frame_3.pack()
+            Label(self.frame_3, text=&quot;                  F(x):&quot;).pack(side=LEFT)
+            self.F = Entry(self.frame_3)
+            self.F.pack()
+            self.frame_4 = Frame(self.frame_1)
+            self.frame_4.pack()
+            self.botao_calcula = Button(self.frame_4, text=&quot;Calcular&quot;)
+            self.botao_calcula[&#39;width&#39;] = 35
+            self.botao_calcula.pack()
+            self.botao_calcula.bind(&quot;&lt;Button-1&gt;&quot;, self.clica_botao_calcula)
+            self.frame_5 = Frame(self.frame_1)
+            self.frame_5.pack()
+            self.labelE = Label(self.frame_5, text=&quot;E(X): &quot;)
+            self.labelE.pack()
+            self.labelVar = Label(self.frame_5, text=&quot;Var(X): &quot;)
+            self.labelVar.pack()
+            self.labelP = Label(self.frame_5)
+            self.labelP.pack()
+            self.labelF = Label(self.frame_5)
+            self.labelF.pack()
+        def clica_botao_ok(self, event):
+            self.graficoFd.set_modelo(self.modelo, self.modelo.fdp, None, None, False)
+            self.graficoF.set_modelo(self.modelo, self.modelo.F, None, None, True)
+            self.frame_1.pack()
+            try:
+                self.labelE.setParent(None)
+                self.labelVar.setParent(None)
+            except: pass
+            self.labelE[&#39;text&#39;] = &quot;E(X): %.5f&quot; % self.modelo.e()
+            self.labelVar[&#39;text&#39;] = &quot;Var(X): %.5f&quot; % self.modelo.var()
+        def clica_botao_calcula(self, event):
+            try:
+                x = float(self.x1.get())
+                y = float(self.x2.get())
+                try:
+                    self.labelP[&#39;text&#39;] = &quot;P(%.2f &lt;= X &lt;= %.2f) = %.5f&quot; % (x, y, self.modelo.fdp(x, y))
+                    self.graficoFd.set_modelo(self.modelo, self.modelo.fdp, x, y, False)
+                except Exception, e:
+                    tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+            except:
+                if self.x1.get().replace(&quot; &quot;,&quot;&quot;) != &quot;&quot; or self.x2.get().replace(&quot; &quot;,&quot;&quot;) != &quot;&quot;:
+                    tkMessageBox.showwarning(&quot;Ops...&quot;, &quot;x deve ser um número inteiro&quot;, parent=self.top_level)
+                self.graficoFd.set_modelo(self.modelo, self.modelo.fdp, None, None, False)
+                self.labelP[&#39;text&#39;] = &quot;&quot;
+            try:
+                x = float(self.F.get())
+                self.labelF[&#39;text&#39;] = &quot;F(%.2f) = %.5f&quot; % (x, self.modelo.F(x))
+                self.graficoF.set_modelo(self.modelo, self.modelo.F, -9999999999999, x, True)
+            except:
+                self.graficoF.set_modelo(self.modelo, self.modelo.F, None, None, True)
+                self.labelF[&#39;text&#39;] = &quot;&quot;
+        
+    class JanelaUniforme(JanelaContinua):
+        def __init__(self, top_level):
+            JanelaContinua.__init__(self, top_level, &quot;Parâmetro a&quot;, &quot;Parâmetro b&quot;)
+        def clica_botao_ok(self, event):
+            a = self.entries[&quot;Parâmetro a&quot;].get()
+            b = self.entries[&quot;Parâmetro b&quot;].get()
+            try:
+                self.modelo = Uniforme(a, b)
+                JanelaContinua.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+                
+    class JanelaExponencial(JanelaContinua):
+        def __init__(self, top_level):
+            JanelaContinua.__init__(self, top_level, &quot;Parâmetro alfa&quot;)
+        def clica_botao_ok(self, event):
+            a = self.entries[&quot;Parâmetro alfa&quot;].get()
+            try:
+                self.modelo = Exponencial(a)
+                JanelaContinua.clica_botao_ok(self, event)
+            except Exception, e:
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+
+    class JanelaNormal(JanelaContinua):
+        def __init__(self, top_level):
+            JanelaContinua.__init__(self, top_level, &quot;Média&quot;, &quot;Variância&quot;)
+        def clica_botao_ok(self, event):
+            u = self.entries[&quot;Média&quot;].get()
+            o2 = self.entries[&quot;Variância&quot;].get()
+            try:
+                self.modelo = Normal(u, o2)
+                JanelaContinua.clica_botao_ok(self, event)
+            except Exception, e: 
+                tkMessageBox.showwarning(&quot;Ops...&quot;, e[0], parent=self.top_level)
+                
+    raiz = Tk()
+    raiz.title(&quot;Mesquita 1.0&quot;)
+    JanelaPrincipal(raiz)
+    raiz.mainloop()
+</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PyInvaders]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
+    <updated>2014-09-27T12:16:32-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
+    <content type="html"><![CDATA[<p>The last game of terminal games series, this time a copy of Space Invaders.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pyinvaders.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/05364c4b67d5ed265871.js?file=PyInvaders.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PyInvaders v3.1
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import time, os, platform, random, sys, select
+
+class GameObject(object):
+    def __init__(self, life, x, y, char):
+        self.life = life
+        self.x = x
+        self.y = y
+        self.char = char
+    def getX(self):
+        return self.x
+    def getY(self):
+        return self.y
+    def getChar(self):
+        return self.char
+    def getLife(self):
+        return self.life
+    def setX(self, x):
+        self.x = x
+    def setY(self, y):
+        self.y = y
+    def damage(self):
+        self.life -= 1
+    def dead(self):
+        return self.life &lt;= 0
+    
+class Game(object):
+    def __init__(self):
+        self.new_game()
+    def new_game(self):
+        self.spacecraft = GameObject(3, 13, 8, &quot;^&quot;)
+        self.aliens = []
+        self.create_aliens()
+        self.walls = []
+        self.create_walls()
+        self.shoots = []
+        self.shoots_aliens = []
+        self.terrain = []
+        self.create_terrain()
+        self.score = 0
+        self.cooldown = False
+        self.start_screen = False
+        self.mode_screen = False
+        self.difficulty = 0
+    def create_aliens(self):
+        for x in range(5):
+            for y in range(10):
+                alien = GameObject(5-x, x+1, 4+y, &quot;@&quot;)
+                self.aliens.append(alien)
+    def create_walls(self):
+        for i in range(4):
+            wall = GameObject(1, 12, 3+i*3, &quot;~&quot;)
+            self.walls.append(wall)
+    def create_terrain(self):
+        for x in range(15):
+            self.terrain.append([])
+            for y in range(15):
+                self.terrain[-1].append(&quot; &quot;)
+    def clear_terrain(self):
+        for x in range(15):
+            for y in range(15):
+                self.terrain[x][y] = &quot; &quot;
+    def draw_spacecraft(self):
+        self.terrain[self.spacecraft.getX()][self.spacecraft.getY()] = self.spacecraft.getChar()
+    def find_alien(self, x, y):
+        for i in range(len(self.aliens)):
+            alien = self.aliens[i]
+            if alien.getX() == x and alien.getY() == y:
+                return i
+    def find_wall(self, x, y):
+        for i in range(len(self.walls)):
+            wall = self.walls[i]
+            if wall.getX() == x and wall.getY() == y:
+                return i
+    def destroy_shoot(self, i):
+        self.shoots.pop(i)
+    def draw_shoots(self):
+        for i in range(len(self.shoots) - 1, -1, -1):
+            shoot = self.shoots[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            a = self.find_alien(x, y)
+            if a != None:
+                self.aliens[a].damage()
+                if self.aliens[a].dead():
+                    self.aliens.pop(a)
+                    self.score += 10
+                self.destroy_shoot(i)
+            else:
+                if x &gt; 0:
+                    shoot.setX(x - 1)
+                else:
+                    self.destroy_shoot(i)
+        for shoot in self.shoots:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def destroy_shoot_aliens(self, i):
+        self.shoots_aliens.pop(i)
+    def alien_shoot(self):
+        x = random.randint(0, len(self.aliens)-1)
+        alien = self.aliens[x]
+        shoot = GameObject(1, alien.getX()+1, alien.getY(), &quot;:&quot;)
+        self.shoots_aliens.append(shoot)
+    def draw_shoots_aliens(self):
+        if int(time.localtime().tm_sec) % (4-self.difficulty) == 0:
+            self.alien_shoot()
+        for i in range(len(self.shoots_aliens) - 1, -1, -1):
+            shoot = self.shoots_aliens[i]
+            x = shoot.getX()
+            y = shoot.getY()
+            m = self.find_wall(x, y)
+            if m != None:
+                self.walls[m].damage()
+                if self.walls[m].dead():
+                    self.walls.pop(m)
+                self.destroy_shoot_aliens(i)
+            elif x == self.spacecraft.getX() and y == self.spacecraft.getY():
+                self.spacecraft.damage()
+                if self.spacecraft.dead():
+                    self.game_over()
+                self.destroy_shoot_aliens(i)
+            else:
+                if x &lt; 14:
+                    shoot.setX(x + 1)
+                else:
+                    self.destroy_shoot_aliens(i)
+        for shoot in self.shoots_aliens:
+            self.terrain[shoot.getX()][shoot.getY()] = shoot.getChar()
+    def draw_aliens(self):
+        for alien in self.aliens:
+            self.terrain[alien.getX()][alien.getY()] = alien.getChar()
+    def draw_walls(self):
+        for wall in self.walls:
+            self.terrain[wall.getX()][wall.getY()] = wall.getChar()
+    def draw_terrain(self):
+        for x in range(15):
+            print &quot;&quot;.join(self.terrain[x])
+    def update(self):
+        if int(time.localtime().tm_sec) % self.difficulty == 0:
+            self.cooldown = False
+        print (&quot;SCORE&lt;%d&gt;&quot; % self.score).center(20)
+        self.clear_terrain()
+        self.draw_spacecraft()
+        self.draw_shoots()
+        self.draw_shoots_aliens()
+        self.draw_aliens()
+        self.draw_walls()
+        self.draw_terrain()
+        print (&quot;LIVES: %d&quot; % self.spacecraft.getLife()).center(20)
+        if len(self.aliens) == 0:
+            self.win()
+            return False 
+        elif self.spacecraft.dead():
+			return False 
+        return True 
+    def move_right(self):
+        if self.spacecraft.getY() &lt; 14:
+            self.spacecraft.setY(self.spacecraft.getY() + 1)
+    def move_left(self):
+        if self.spacecraft.getY() &gt; 0:
+            self.spacecraft.setY(self.spacecraft.getY() - 1)
+    def shoot(self):
+        if not self.cooldown:
+            shoot = GameObject(1, 12, self.spacecraft.getY(), &quot;|&quot;)
+            self.shoots.append(shoot)
+            self.cooldown = True
+    def game_over(self):
+        clear_screen()
+        print &quot;GAME OVER!!&quot;
+        time.sleep(3)
+    def win(self):
+        clear_screen()
+        print &quot;YOU ROCK!!&quot;
+        time.sleep(3)
+    def is_start_screen(self):
+        return self.start_screen
+    def start(self):
+        if not self.mode_screen:
+            print &quot;&quot;&quot;
+                              ##          ##
+                                ##      ##           
+                              ##############
+                            ####  ######  ####
+                          ######################
+                          ##  ##############  ##        
+                          ##  ##          ##  ##
+                                ####  ####
+                                    ##
+                                  ##
+                                    ##
+                                      ##
+                                    ##
+                                  ##
+                                    ## &quot;&quot;&quot;
+            print &quot;\n&quot;
+            print &quot;PYINVADERS&quot;.center(70)
+            print &quot;========= CREATED BY: =========&quot;.center(70)
+            print &quot;ABNER MATHEUS (abner.math.c@gmail.com)&quot;.center(70)
+            print &quot;\n&quot;
+            print &quot;PRESS &#39;N&#39; TO START A NEW GAME OR &#39;ESC&#39; TO EXIT GAME.&quot;.center(70)
+        else:
+            if self.difficulty == 0:
+                print &quot;&quot;&quot;DIFFICULTY:
+1. EASY
+2. AVERAGE
+3. HARD
+
+===================================
+GAME CONTROLS:
+===================================
+&#39;A&#39; AND &#39;D&#39; TO MOVE THE SPACECRAFT.
+&#39;S&#39; TO SHOOT.
+                &quot;&quot;&quot;
+            else:
+                self.start_screen = True
+    def new(self):
+        self.mode_screen = True
+    def set_difficulty(self, n):
+        self.difficulty = n
+       
+def clear_screen():
+	if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+	else: os.system(&quot;clear&quot;) 
+	
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, key):
+			event = key.keysym.lower()
+			if event == &quot;escape&quot;:
+				self.console.destroy()
+			elif event == &quot;d&quot;:
+				self.game.move_right()
+			elif event == &quot;a&quot;:
+				self.game.move_left()
+			elif event == &quot;s&quot;:
+				self.game.shoot()
+			elif event == &quot;n&quot;:
+				self.game.new()
+			elif event == &quot;1&quot;:
+				self.game.set_difficulty(1)
+			elif event == &quot;2&quot;:
+				self.game.set_difficulty(2)
+			elif event == &quot;3&quot;:
+				self.game.set_difficulty(3)
+			return True
+		def loop(self): 
+			clear_screen()
+			if not self.game.is_start_screen():
+				self.game.start()
+			else:
+				if not self.game.update():
+						self.game = Game()
+			self.console.after(250, self.loop)
+		def start_game(self):
+			self.game.start()
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(250, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+	
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+	 
+	class Controller:
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, nbc):
+			event = str(nbc.get_data())
+			if event == &#39;\x1b&#39;:
+				return False
+			elif event == &quot;d&quot;:
+				self.game.move_right()
+			elif event == &quot;a&quot;:
+				self.game.move_left()
+			elif event == &quot;s&quot;:
+				self.game.shoot()
+			elif event == &quot;n&quot;:
+				self.game.new()
+			elif event == &quot;1&quot;:
+				self.game.set_difficulty(1)
+			elif event == &quot;2&quot;:
+				self.game.set_difficulty(2)
+			elif event == &quot;3&quot;:
+				self.game.set_difficulty(3)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(250/1000.0)
+				clear_screen()
+				if not self.game.is_start_screen():
+					self.game.start()
+				else:
+					if not self.game.update():
+						self.game = Game()
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()
+</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PyPac]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
+    <updated>2014-09-19T10:04:09-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
+    <content type="html"><![CDATA[<p>Here is another game of my series, this time about the classic Pacman.</p>
+
+<p style="text-align:center;"><img src="/images/posts/pypac.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/892bf12a4a185721485f.js?file=PyPac.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------------
+# PyPac v1.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------------
+import time, os, platform, sys, select, math
+from random import randint
+from copy import copy
+ 
+&quot;&quot;&quot;
+Store a (x, y) coordinate of the terrain
+&quot;&quot;&quot;
+class Position:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y 
+ 
+&quot;&quot;&quot;
+Representates the terrain of the map.
+The terrain is a bidimensional matrix that is mapped through
+a string passed
+&quot;&quot;&quot;
+class Terrain:
+    GHOST = (Position(11, 4), Position(10, 6), Position(11, 6), Position(12, 6))
+    PACMAN = Position(10, 8)
+    GHOST_CHAR = &#39;^&#39;
+    GHOST_WEAKEN_CHAR = &#39;*&#39;
+    PACMAN_CHAR = &#39;@&#39;
+    BULLET = &#39;.&#39;
+    GREATER_BULLET = &#39;0&#39;
+    def __init__(self):
+        self.terrain = map(lambda x: list(x), &quot;&quot;&quot;
+  —————————————————— 
+ |○•••|••••••••|•••○|
+ |•——•|•——————•|•——•|
+ |•|••••••••••••••|•|
+—|•|•——•———-——•——•|•|—
+  •••••••|   |••••••  
+—|•|•——•——————•——•|•|—
+ |•|•••••• •••••••|•|
+ |•——•|•——————•|•——•|
+ |○•••|••••••••|•••○|
+  —————————————————— 
+&quot;&quot;&quot;.replace(&quot;•&quot;, Terrain.BULLET).replace(&quot;○&quot;, Terrain.GREATER_BULLET).replace(&quot;—&quot;, &quot;=&quot;).split(&quot;\n&quot;))
+    def is_blocked(self, position, direction):
+        try:
+            if position.x == 11 and position.y == 5 and direction == Direction.UPWARD: return False 
+            char = self.terrain[position.y][position.x] 
+            return char == &quot;|&quot; or char == &quot;=&quot; or char == &quot;-&quot;
+        except: return True
+    &quot;&quot;&quot;
+    Makes the pacman eats bullets and increment game score in process
+    &quot;&quot;&quot;
+    def eat(self, context, pacman):
+        position = self.terrain[pacman.position.y][pacman.position.x]
+        if position == Terrain.BULLET:
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 1 
+        elif position == Terrain.GREATER_BULLET: 
+            self.terrain[pacman.position.y][pacman.position.x] = &#39; &#39;
+            context.context.score += 5  
+            return True
+        return False
+    &quot;&quot;&quot;
+    Verify is the terrain has no &#39;bullets&#39;
+    &quot;&quot;&quot;
+    def is_clear(self):
+        for line in self.terrain:
+            if &#39;.&#39; in line or &#39;0&#39; in line: return False
+        return True
+    @staticmethod
+    def clear_screen():
+        if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Render the terrain on the screen
+    &quot;&quot;&quot;
+    def render(self, pacman, ghosts):
+        Terrain.clear_screen()
+        matrix = []
+        for i in range(len(self.terrain)):
+            matrix.append(list(self.terrain[i]))
+        matrix[pacman.position.y][pacman.position.x] = Terrain.PACMAN_CHAR
+        for ghost in ghosts:
+            if ghost.is_weaken():
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_WEAKEN_CHAR
+            else:
+                matrix[ghost.position.y][ghost.position.x] = Terrain.GHOST_CHAR
+        result = &quot;&quot;
+        for i in range(len(matrix)):
+            result += &quot;&quot;.join(matrix[i]) + &quot;\n&quot;
+        print(result)
+ 
+&quot;&quot;&quot;
+Enumerate the possible directions that a walkable can take
+&quot;&quot;&quot;
+class Direction:
+    FORWARD = 1
+    BACKWARD = 2
+    UPWARD = 3
+    DOWNWARD = 4
+ 
+&quot;&quot;&quot;
+Representates a walkable object in the map (ghost and pacman)
+&quot;&quot;&quot;
+class Walkable:
+    def __init__(self): pass
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Verify if given movement in a certain direction is possible
+    &quot;&quot;&quot;
+    def possible_movement(self, direction, terrain):
+        if direction == Direction.FORWARD:
+            return not terrain.is_blocked(Position(self.position.x + 1, self.position.y), direction)
+        elif direction == Direction.BACKWARD:
+            return not terrain.is_blocked(Position(self.position.x - 1, self.position.y), direction)
+        elif direction == Direction.UPWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y - 1), direction)
+        elif direction == Direction.DOWNWARD:
+            return not terrain.is_blocked(Position(self.position.x, self.position.y + 1), direction)
+    &quot;&quot;&quot;
+    Move the object toward its direction. Return false case the movement is not possible.
+    &quot;&quot;&quot;
+    def move(self, terrain):
+        if self.direction == Direction.FORWARD and self.position.x &gt;= len(terrain.terrain[self.position.y]) - 1:
+            self.position.x = 0
+        elif self.direction == Direction.BACKWARD and self.position.x &lt;= 0:
+            self.position.x = len(terrain.terrain[self.position.y]) - 1
+        elif self.possible_movement(self.direction, terrain): 
+            if self.direction == Direction.FORWARD:
+                self.position.x += 1
+            elif self.direction == Direction.BACKWARD:
+                self.position.x -= 1
+            elif self.direction == Direction.UPWARD:
+                self.position.y -= 1
+            elif self.direction == Direction.DOWNWARD:
+                self.position.y += 1
+        else: return False
+        return True
+ 
+&quot;&quot;&quot;
+Representates the ghosts in the map.
+A ghost is a walkable
+&quot;&quot;&quot;
+class Ghost(Walkable):
+    def __init__(self, number):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.GHOST[number])
+        self.isWeaken = False
+        self.direction = Direction.UPWARD
+    &quot;&quot;&quot;
+    Verify is ghost is weaken (frightened)
+    &quot;&quot;&quot;
+    def is_weaken(self):
+        return self.isWeaken
+    &quot;&quot;&quot;
+    Weaken the ghost, making it &#39;eatable&#39; by Pacman
+    &quot;&quot;&quot;
+    def weaken(self):
+        self.isWeaken = True
+    &quot;&quot;&quot;
+    Strengthen the ghost, making it dangerous to Pacman
+    &quot;&quot;&quot;
+    def strengthen(self):
+        self.isWeaken = False
+ 
+&quot;&quot;&quot;
+Representates the Pacman
+&quot;&quot;&quot;
+class Pacman(Walkable):
+    def __init__(self):
+        Walkable.__init__(self)
+        self.position = copy(Terrain.PACMAN)
+        self.direction = Direction.FORWARD
+ 
+&quot;&quot;&quot;
+Main class of the game.
+It receives the input of the user and maps it to its state.
+&quot;&quot;&quot;
+class Game:
+    def __init__(self):
+        self.lives = 3
+        self.score = 0
+        self.level = 1
+        self.state = StateInitial(self)
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self):
+        self.state.loop()
+    &quot;&quot;&quot;
+    Set a direction of Pacman. Only work in StatePlaying.
+    &quot;&quot;&quot;
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+    &quot;&quot;&quot;
+    Start a new game.
+    &quot;&quot;&quot;
+    def start_new_game(self):
+        self.state.start_new_game()
+ 
+&quot;&quot;&quot;
+Superclass of states of a game
+&quot;&quot;&quot;
+class GameState:
+    def __init__(self): pass
+    def loop(self):  raise NotImplementedException()
+    def set_direction(self, direction): raise NotImplementedException()
+    def start_new_game(self): raise NotImplementedException()
+ 
+&quot;&quot;&quot;
+Initial screen of the game.
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.context.lives = 3
+        self.context.score = 0
+        self.context.level = 1
+    def loop(self): 
+        message = &quot;&quot;&quot;
+ ____  __ __  ____   ____    __ 
+|    \|  |  ||    \ /    |  /  ]   ──▒▒▒▒▒────▄████▄─────
+|  o  )  |  ||  o  )  o  | /  /    ─▒─▄▒─▄▒──███▄█▀──────
+|   _/|  ~  ||   _/|     |/  /     ─▒▒▒▒▒▒▒─▐████──█──█──
+|  |  |___, ||  |  |  _  /   \_    ─▒▒▒▒▒▒▒──█████▄──────
+|  |  |     ||  |  |  |  \     |   ─▒─▒─▒─▒───▀████▀─────
+|__|  |____/ |__|  |__|__|\____|
+                                
+GAME CONTROLS:
+-----------------------------
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39;, &#39;W&#39; TO MOVE.
+&#39;ESC&#39; TO EXIT GAME.
+-----------------------------
+ 
+CREATED BY:
+-----------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+        Terrain.clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StatePlaying(self.context) 
+ 
+class StateGameOver(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+    def loop(self): 
+        Terrain.clear_screen()
+        print(&quot;&quot;&quot;
+  ____   ____  ___ ___    ___       ___   __ __    ___  ____  
+ /    | /    ||   |   |  /  _]     /   \ |  |  |  /  _]|    \ 
+|   __||  o  || _   _ | /  [_     |     ||  |  | /  [_ |  D  )
+|  |  ||     ||  \_/  ||    _]    |  O  ||  |  ||    _]|    / 
+|  |_ ||  _  ||   |   ||   [_     |     ||  :  ||   [_ |    \ 
+|     ||  |  ||   |   ||     |    |     | \   / |     ||  .  \ 
+|___,_||__|__||___|___||_____|     \___/   \_/  |_____||__|\_|
+                                                              
+PRESS &#39;N&#39; TO START A NEW GAME.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+    def set_direction(self, direction): pass
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+ 
+&quot;&quot;&quot;
+Main state of the game.
+Here is where the stuff happens.
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        GameState.__init__(self)
+        self.context = context
+        self.start_new_level()
+    &quot;&quot;&quot;
+    Get the angle between two vectors.
+    &quot;&quot;&quot;
+    def __get_angle(self, w1, w2):
+        return math.degrees(math.atan2((w2.position.y - w1.position.y), (w2.position.x - w1.position.x)))
+    &quot;&quot;&quot;
+    Convert a given angle in a direction.
+    &quot;&quot;&quot;
+    def __get_direction(self, angle):
+        if 0 &lt;= angle &lt; 45:
+            return Direction.FORWARD
+        elif 45 &lt;= angle &lt; 135:
+            return Direction.UPWARD
+        elif 135 &lt;= angle &lt; 225:
+            return Direction.BACKWARD
+        elif 225 &lt;= angle &lt; 315:
+            return Direction.DOWNWARD
+        elif 315 &lt;= angle &lt; 360:
+            return Direction.FORWARD
+        return Direction.FORWARD
+    &quot;&quot;&quot;
+    Verify is two vectors are equal
+    &quot;&quot;&quot;
+    def __equals(self, p1, p2):
+        return p1.x == p2.x and p1.y == p2.y
+    &quot;&quot;&quot;
+    Verify if two ghosts occupies the same tile.
+    &quot;&quot;&quot;
+    def __contains_others(self, movingGhost):
+        for ghost in self.ghosts:
+            if ghost != movingGhost:
+                if self.__equals(ghost.position, movingGhost.position): return True
+        return False
+    &quot;&quot;&quot;
+    Move the ghosts through the map
+    &quot;&quot;&quot;
+    def __move_ghosts(self):
+        for ghost in self.ghosts:
+            if (self.count_loop % 2 == 0 or self.count_loop % 3) and ghost.is_weaken(): continue
+            if self.count_loop % 2 == 0 and not ghost.is_weaken(): continue
+            if self.__equals(ghost.position, Terrain.GHOST[0]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[1]):
+                ghost.turn(Direction.FORWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[2]):
+                ghost.turn(Direction.UPWARD)
+            elif self.__equals(ghost.position, Terrain.GHOST[3]):
+                ghost.turn(Direction.BACKWARD)    
+            else:
+                angle = self.__get_angle(ghost, self.pacman)
+                if ghost.is_weaken(): 
+                    angle += 180
+                ghost.turn(self.__get_direction(angle))
+            old_position = copy(ghost.position)
+            if ghost.direction == Direction.FORWARD:
+                forbidden_direction = Direction.BACKWARD
+            elif ghost.direction == Direction.BACKWARD:
+                forbidden_direction = Direction.FORWARD
+            elif ghost.direction == Direction.UPWARD:
+                forbidden_direction = Direction.DOWNWARD
+            elif ghost.direction == Direction.DOWNWARD:
+                forbidden_direction = Direction.UPWARD
+            count = 0 
+            while self.__equals(ghost.position, old_position) or self.__contains_others(ghost):
+                while True:
+                    ghost.direction = randint(1, 4) 
+                    if (ghost.possible_movement(ghost.direction, self.terrain) and ghost.direction != forbidden_direction) or count &gt; 100: break
+                    count += 1
+                ghost.move(self.terrain)
+    &quot;&quot;&quot;
+    Makes the Pacman eat (or being eaten) the ghosts, depending its state.
+    &quot;&quot;&quot;
+    def __eat_ghosts(self):
+        for i in range(len(self.ghosts)):
+            if self.__equals(self.ghosts[i].position, self.pacman.position):
+                if self.ghosts[i].is_weaken():
+                    self.ghosts[i].strengthen()
+                    self.ghosts[i].position = copy(Terrain.GHOST[i])
+                else:
+                    self.lose_live()
+    &quot;&quot;&quot;
+    Render the screen (terrain + info)
+    &quot;&quot;&quot;
+    def __render(self):
+        self.terrain.render(self.pacman, self.ghosts)
+        print(&quot;LIVES: %d    SCORE: %d    LEVEL: %d&quot; % (self.context.lives, self.context.score, self.context.level))
+    def loop(self): 
+        self.count_loop += 1
+        if self.terrain.is_clear():
+            print(&quot;&quot;&quot;
+CONGRATULATIONS! 
+A NEW LEVEL WILL START IN FEW SECONDS.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(1)
+            self.context.level += 1
+            self.start_new_level()
+        self.__move_ghosts()
+        self.pacman.move(self.terrain)
+        self.__eat_ghosts()
+        if self.countdown &gt; 0: self.countdown -= 1
+        else:
+            for ghost in self.ghosts: ghost.strengthen()
+        if self.terrain.eat(self, self.pacman):
+            for ghost in self.ghosts: ghost.weaken()
+            self.countdown = 15
+        self.__render()
+    def set_direction(self, direction):
+        if self.pacman.possible_movement(direction, self.terrain):
+            self.pacman.turn(direction)
+    def start_new_game(self):
+        self.context.state = StateInitial(self.context)
+    &quot;&quot;&quot;
+    Start a new level. On a new level, lives and points are mantained.
+    &quot;&quot;&quot;
+    def start_new_level(self):
+        self.terrain = Terrain()
+        self.pacman = Pacman()
+        self.ghosts = []
+        for i in range(4): self.ghosts.append(Ghost(i))
+        self.count_loop = 0
+        self.countdown = 0
+    &quot;&quot;&quot;
+    Makes Pacman lose a life. 
+    &quot;&quot;&quot;
+    def lose_live(self):
+        self.context.lives -= 1
+        if self.context.lives &lt;= 0:
+            self.context.state = StateGameOver(self.context)
+        else:
+            self.__render()
+            print(&quot;&quot;&quot;
+YOU LOST A LIVE.&quot;&quot;&quot;.decode(&#39;utf-8&#39;))
+            time.sleep(2)
+            self.pacman = Pacman()
+            self.pacman = Pacman()
+            self.ghosts = []
+            for i in range(4): self.ghosts.append(Ghost(i))
+            self.count_loop = 0
+            self.countdown = 0
+ 
+#---------------------------------
+# IO MANAGER
+#---------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		SPEED = 0.2
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, event):
+			key = event.keysym.lower()
+			if key == &quot;escape&quot;: #ESC
+				return False
+			elif key == &quot;n&quot;: #Enter
+				self.game.start_new_game()
+			elif key == &quot;d&quot;: #Right arrow
+				self.game.set_direction(Direction.FORWARD)
+			elif key == &quot;a&quot;: #Left arrow
+				self.game.set_direction(Direction.BACKWARD)
+			elif key == &quot;w&quot;: #Up arrow
+				self.game.set_direction(Direction.UPWARD)
+			elif key == &quot;s&quot;: #Down arrow
+				self.game.set_direction(Direction.DOWNWARD)
+			return True
+		def loop(self):
+			self.game.loop()   
+			self.console.after(250, self.loop)
+		def start_game(self):
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(250, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+ 
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+				
+	class Controller:
+		SPEED = 0.2
+		def __init__(self):
+			self.game = Game() 
+			self.start_game()
+		def press_key(self, nbc):
+			key = str(nbc.get_data())
+			if key == &#39;\x1b&#39;: #ESC
+				return False
+			elif key == &#39;n&#39;: #Enter
+				self.game.start_new_game()
+			elif key == &#39;d&#39;: #Right arrow
+				self.game.set_direction(Direction.FORWARD)
+			elif key == &#39;a&#39;: #Left arrow
+				self.game.set_direction(Direction.BACKWARD)
+			elif key == &#39;w&#39;: #Up arrow
+				self.game.set_direction(Direction.UPWARD)
+			elif key == &#39;s&#39;: #Down arrow
+				self.game.set_direction(Direction.DOWNWARD)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(Controller.SPEED)
+				self.game.loop()   
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+  <entry>
+    <title type="html"><![CDATA[(Python 2.7) PySnake]]></title>
+    <link href="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
+    <updated>2014-09-17T22:26:50-03:00</updated>
+    <id>http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
+    <content type="html"><![CDATA[<p>Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, like this one below:</p>
+
+<p style="text-align:center;"><img src="/images/posts/pysnake.png" alt="" /></p>
+
+<center><a href="https://gist.githubusercontent.com/abnerrjo/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
+
+
+
+
+<!-- more -->
+
+
+<p>You can get the source code below. Have fun!</p>
+
+<center><input id="spoiler" type="button" value="See source code" onclick="toggle_visibility('code');"></center>
+
+
+<div id="code">
+<div><script src='https://gist.github.com/300f93a9820c52e6a243.js?file=PySnake.py'></script>
+<noscript><pre><code>#!/usr/bin/python
+# -*-coding=utf-8 -*-
+#-----------------------------------------------------------
+# PySnake v2.2
+# Created by: Abner Matheus
+# E-mail: abner.math.c@gmail.com
+# Github: http://github.com/picoledelimao
+#-----------------------------------------------------------
+import os, platform, time, sys, select
+from random import randint
+ 
+&quot;&quot;&quot;
+Enumerate the directions that a snake can take
+&quot;&quot;&quot;
+class Direction:
+    forward = 1
+    backward = 2
+    upward = 3
+    downward = 4
+ 
+&quot;&quot;&quot;
+Control the movement and position of a snake
+&quot;&quot;&quot;
+class Snake:
+    def __init__(self, x, y, width, height):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Turn the snake of direction
+    &quot;&quot;&quot;
+    def turn(self, direction):
+        self.direction = direction
+    &quot;&quot;&quot;
+    Move the snake toward its direction
+    Return false if the movement crossed the wall
+    &quot;&quot;&quot;
+    def move(self):
+        if self.direction == Direction.forward:
+            self.x += 1
+            if self.x &gt;= self.width:
+                self.x = 0
+                return False
+        elif self.direction == Direction.backward:
+            self.x -= 1
+            if self.x &lt; 0:
+                self.x = self.width - 1
+                return False
+        elif self.direction == Direction.upward:
+            self.y -= 1
+            if self.y &lt; 0:
+                self.y = self.height - 1
+                return False
+        elif self.direction == Direction.downward:
+            self.y += 1
+            if self.y &gt;= self.height:
+                self.y = 0 
+                return False
+        return True
+    &quot;&quot;&quot;
+    Change snake&#39;s direction and move it at the same time
+    &quot;&quot;&quot;
+    def turn_and_move(self, direction):
+        self.turn(direction)
+        return self.move() 
+ 
+&quot;&quot;&quot;
+Keep information of a terrain object (fruit or obstacles)
+&quot;&quot;&quot;
+class TerrainObject:
+    &quot;&quot;&quot;
+    Verify if given position if empty
+    &quot;&quot;&quot;
+    def __is_empty(self, x, y, context):
+        try:
+            for snake in context.snakes:
+                if snake.x == x and snake.y == y: return False
+            for obstacle in context.obstacles:
+                if obstacle.x == x and obstacle.y == y: return False
+            if context.fruit.x == x and context.fruit.y == y: return False
+        except AttributeError: pass
+        return True
+    &quot;&quot;&quot;
+    Build a object in a random place of the terrain
+    &quot;&quot;&quot;
+    def __init__(self, context):
+        while True:
+            x = randint(0, context.width - 1)
+            y = randint(0, context.height - 1)
+            if self.__is_empty(x, y, context): break
+        self.x = x
+        self.y = y
+    &quot;&quot;&quot;
+    Verify if the snake&#39;s head hit that object
+    &quot;&quot;&quot;
+    def hit(self, snake):
+        return self.x == snake.x and self.y == snake.y
+ 
+&quot;&quot;&quot;
+Keep information of the terrain
+&quot;&quot;&quot;
+class Terrain:
+    __WHITE_SPACE = &#39; &#39;
+    __SNAKE_BODY = &#39;0&#39;
+    __FRUIT = &#39;*&#39;
+    __OBSTACLE = &quot;~&quot;
+    __HOR_BOUND = &quot;-&quot;
+    __VER_BOUND = &quot;|&quot;
+    &quot;&quot;&quot;
+    Create a terrain of given width and height
+    &quot;&quot;&quot;
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+    &quot;&quot;&quot;
+    Update terrain information using passed objects
+    &quot;&quot;&quot;
+    def __update(self, snakes, fruit, obstacles):
+        self.matrix = [] 
+        for i in range(self.height):
+            self.matrix.append([])
+            for j in range(self.width):
+                self.matrix[i].append(Terrain.__WHITE_SPACE)
+        self.matrix[fruit.y][fruit.x] = Terrain.__FRUIT
+        for snake in snakes:
+            self.matrix[snake.y][snake.x] = Terrain.__SNAKE_BODY
+        for obstacle in obstacles:
+            self.matrix[obstacle.y][obstacle.x] = Terrain.__OBSTACLE
+    &quot;&quot;&quot;
+    Return a string that shows a visual representation of the terrain
+    &quot;&quot;&quot;
+    def show(self, snakes, fruit, obstacles):
+        self.__update(snakes, fruit, obstacles)  
+        horizontal_bound = &quot;.&quot; + Terrain.__HOR_BOUND * (self.width) + &quot;.&quot; + &quot;\n&quot;
+        result = horizontal_bound
+        for line in self.matrix:
+            result += Terrain.__VER_BOUND + &quot;&quot;.join(line) + Terrain.__VER_BOUND + &quot;\n&quot;
+        result += horizontal_bound
+        return result
+ 
+&quot;&quot;&quot;
+Responsible to show elements in the screen
+&quot;&quot;&quot;
+class View:
+    LOGO = &quot;&quot;&quot;
+██████╗ ██╗   ██╗███████╗███╗   ██╗ █████╗ ██╗  ██╗███████╗
+██╔══██╗╚██╗ ██╔╝██╔════╝████╗  ██║██╔══██╗██║ ██╔╝██╔════╝
+██████╔╝ ╚████╔╝ ███████╗██╔██╗ ██║███████║█████╔╝ █████╗  
+██╔═══╝   ╚██╔╝  ╚════██║██║╚██╗██║██╔══██║██╔═██╗ ██╔══╝  
+██║        ██║   ███████║██║ ╚████║██║  ██║██║  ██╗███████╗
+╚═╝        ╚═╝   ╚══════╝╚═╝  ╚═══╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝
+&quot;&quot;&quot;
+    INITIAL = LOGO + &quot;&quot;&quot;
+ 
+GAME CONTROLS:
+=============================================================
+PRESS &#39;N&#39; TO START A NEW GAME.
+&#39;A&#39;, &#39;S&#39;, &#39;D&#39; OR &#39;W&#39; KEYS TO MOVE THE SNAKE.
+ESC TO EXIT GAME.
+=============================================================
+ 
+CREATED BY: 
+-------------------------------------------------------------
+ABNER MATHEUS (abner.math.c@gmail.com)
+&quot;&quot;&quot;
+    DIFFICULTY = LOGO + &quot;&quot;&quot;
+ 
+CHOOSE A DIFFICULTY BELOW:
+=============================================================
+1. VERY EASY
+2. MEDIUM
+3. HARD
+=============================================================
+ 
+OBJECTS:
+-------------------------------------------------------------
+* Fruit
+~ Obstacle
+&quot;&quot;&quot;
+    GAME_OVER = &quot;&quot;&quot;
+  ▄████  ▄▄▄       ███▄ ▄███▓▓█████     ▒█████   ██▒   █▓▓█████  ██▀███  
+ ██▒ ▀█▒▒████▄    ▓██▒▀█▀ ██▒▓█   ▀    ▒██▒  ██▒▓██░   █▒▓█   ▀ ▓██ ▒ ██▒
+▒██░▄▄▄░▒██  ▀█▄  ▓██    ▓██░▒███      ▒██░  ██▒ ▓██  █▒░▒███   ▓██ ░▄█ ▒
+░▓█  ██▓░██▄▄▄▄██ ▒██    ▒██ ▒▓█  ▄    ▒██   ██░  ▒██ █░░▒▓█  ▄ ▒██▀▀█▄  
+░▒▓███▀▒ ▓█   ▓██▒▒██▒   ░██▒░▒████▒   ░ ████▓▒░   ▒▀█░  ░▒████▒░██▓ ▒██▒
+ ░▒   ▒  ▒▒   ▓▒█░░ ▒░   ░  ░░░ ▒░ ░   ░ ▒░▒░▒░    ░ ▐░  ░░ ▒░ ░░ ▒▓ ░▒▓░
+  ░   ░   ▒   ▒▒ ░░  ░      ░ ░ ░  ░     ░ ▒ ▒░    ░ ░░   ░ ░  ░  ░▒ ░ ▒░
+░ ░   ░   ░   ▒   ░      ░      ░      ░ ░ ░ ▒       ░░     ░     ░░   ░ 
+      ░       ░  ░       ░      ░  ░       ░ ░        ░     ░  ░   ░     
+                                                     ░                   
+PRESS &#39;N&#39; TO START A NEW GAME.
+&quot;&quot;&quot;
+    def __init__(self, context):
+        self.context = context
+        self.terrain = Terrain(self.context.width, self.context.height)
+    &quot;&quot;&quot;
+    Render terrain and game information in the screen
+    &quot;&quot;&quot;
+    def render_context(self, context):
+	info = &quot;LIVES: %d          SCORE: %d&quot; % (self.context.lives, self.context.score) + &quot;\n&quot;
+        terrain = self.terrain.show(self.context.snakes, self.context.fruit, self.context.obstacles)
+        View.render(info + terrain)
+    &quot;&quot;&quot;&quot;
+    Clear the screen (platform dependent)
+    &quot;&quot;&quot;
+    @staticmethod
+    def __clear_screen():
+	if platform.system() == &quot;Windows&quot;: os.system(&quot;cls&quot;)
+        else: os.system(&quot;clear&quot;)
+    &quot;&quot;&quot;
+    Show a message in the screen
+    &quot;&quot;&quot;
+    @staticmethod
+    def render(message):
+        import sys
+        reload(sys)
+        sys.setdefaultencoding(&#39;utf-8&#39;)
+        View.__clear_screen()
+        print(message.decode(&#39;utf-8&#39;))
+ 
+&quot;&quot;&quot;
+Stores the actual state of the game (interface)
+&quot;&quot;&quot;
+class GameState:
+    def loop(self, controller): 
+        raise NotImplementedError()
+    def new_game(self): 
+        raise NotImplementedError()
+    def set_difficulty(self, difficulty): 
+        raise NotImplementedError()
+    def set_direction(self, direction):
+        raise NotImplementedError()
+ 
+&quot;&quot;&quot;
+Initial state of the game
+&quot;&quot;&quot;
+class StateInitial(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.INITIAL)
+    def new_game(self): 
+        self.context.state = StatePickDifficulty(self.context) 
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass 
+ 
+&quot;&quot;&quot;
+Pick difficulty screen
+&quot;&quot;&quot;
+class StatePickDifficulty(GameState):
+    def __init__(self, context):
+        self.context = context
+    &quot;&quot;&quot;
+    Main loop of the game
+    &quot;&quot;&quot;
+    def loop(self, controller):
+        View.render(View.DIFFICULTY)
+    &quot;&quot;&quot;
+    Start a new game
+    &quot;&quot;&quot;
+    def new_game(self): 
+        self.context.state = StateInitial(self.context) 
+    &quot;&quot;&quot;
+    Set game difficulty
+    &quot;&quot;&quot;
+    def set_difficulty(self, difficulty):
+        self.context.difficulty = difficulty
+        self.context.state = StatePlaying(self.context)
+    &quot;&quot;&quot;
+    Change snake&#39;s direction
+    &quot;&quot;&quot;
+    def set_direction(self, direction): pass
+ 
+&quot;&quot;&quot;
+Here is where the game happens itself
+&quot;&quot;&quot;
+class StatePlaying(GameState):
+    def __init__(self, context):
+        self.context = context
+        self.width = self.context.width
+        self.height = self.context.height
+        self.lives = self.context.lives
+        self.score = 0 
+        self.view = View(self)
+        self.snakes = [Snake(self.width / 2, self.height / 2, self.width, self.height)] 
+        self.fruit = TerrainObject(self)
+        self.direction = Direction.forward 
+        self.direction_queue = [] 
+        self.snakes_queue = [] 
+        self.obstacles = [] 
+        number_of_obstacles = randint((context.difficulty - 1) * 2, (self.context.difficulty - 1) * 3)
+        for i in range(number_of_obstacles):
+            self.obstacles.append(TerrainObject(self))
+    &quot;&quot;&quot;
+    Stores snakes&#39; movement in a queue
+    &quot;&quot;&quot;
+    def __queue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].append(self.snakes[i-1].direction)
+    &quot;&quot;&quot;
+    Update the movement queue
+    &quot;&quot;&quot;
+    def __dequeue_movement(self):
+        for i in range(1, len(self.snakes)):
+            self.direction_queue[i-1].pop(0) 
+    &quot;&quot;&quot;
+    Check if snake&#39;s head hit some obstacle (including itself)
+    &quot;&quot;&quot;
+    def __hit_obstacle(self):
+        for i in range(1, len(self.snakes)):
+            if self.snakes[0].x == self.snakes[i].x and self.snakes[0].y == self.snakes[i].y:
+                return True
+        for obstacle in self.obstacles:
+            if self.snakes[0].x == obstacle.x and self.snakes[0].y == obstacle.y:
+                return True
+        return False
+    &quot;&quot;&quot;
+    Move all the snake parts towards its direction
+    &quot;&quot;&quot;
+    def __move(self):
+        for i in range(1, len(self.snakes)):
+            self.snakes[i].turn_and_move(self.direction_queue[i-1][0]) 
+        success = self.snakes[0].turn_and_move(self.direction)
+        if self.__hit_obstacle():
+            self.lives = 0
+            return False
+        return success 
+    &quot;&quot;&quot;
+    Makes the snake grow
+    &quot;&quot;&quot;
+    def __queue_growth(self):
+        x = self.snakes[0].x
+        y = self.snakes[0].y
+        self.snakes_queue.append(Snake(x, y, self.width, self.height)) 
+    &quot;&quot;&quot;
+    Check if snake left fruit position (so its new part can be appended)
+    &quot;&quot;&quot;
+    def __is_free(self, queued_snake): 
+        for existing_snake in self.snakes:
+            if existing_snake.x == queued_snake.x and existing_snake.y == queued_snake.y:
+                return False
+        return True 
+    &quot;&quot;&quot;
+    Append a snake&#39;s part that was in queue
+    &quot;&quot;&quot;
+    def __dequeue_growth(self):
+        for i in range(len(self.snakes_queue)-1,-1,-1):
+            if self.__is_free(self.snakes_queue[i]):
+                self.snakes.append(self.snakes_queue[i]) 
+                self.snakes_queue.pop(i) 
+                self.direction_queue.append([])
+    def loop(self, controller):
+        if controller.speed &gt; 40: 
+            controller.speed -= 1
+        if self.fruit.hit(self.snakes[0]):
+            self.fruit = TerrainObject(self)
+            self.score += 1
+            self.__queue_growth()
+        self.__queue_movement() 
+        if not self.__move():
+            self.lives -= 1
+            if self.lives &lt; 0: 
+                self.context.state = StateGameOver(self.context)
+                controller.speed = 300
+                return
+        self.__dequeue_movement() 
+        self.__dequeue_growth()
+        self.view.render_context(self) 
+    def new_game(self):
+        self.context.state = StateInitial(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction):
+        self.direction = direction
+ 
+&quot;&quot;&quot;
+Game over screen
+&quot;&quot;&quot;
+class StateGameOver(GameState):
+    def __init__(self, context):
+        self.context = context
+    def loop(self, controller):
+        View.render(View.GAME_OVER)
+    def new_game(self):
+        self.context.state = StatePickDifficulty(self.context)
+    def set_difficulty(self, difficulty): pass
+    def set_direction(self, direction): pass
+ 
+class Game:
+    def __init__(self, width, height, lives):
+        self.width = width
+        self.height = height
+        self.lives = lives
+        self.state = StateInitial(self) 
+    def loop(self, controller):
+        self.state.loop(controller)
+    def new_game(self):
+        self.state.new_game()
+    def set_difficulty(self, difficulty):
+        self.state.set_difficulty(difficulty)
+    def set_direction(self, direction):
+        self.state.set_direction(direction)
+ 
+#-------------------------------
+# IO MANAGER
+#--------------------------------
+def controller_windows():
+	import Tkinter
+	class Controller:
+		def __init__(self):
+			self.game = Game(30, 15, 3) 
+			self.speed = 300 
+			self.start_game()
+		def press_key(self, event):
+			key = event.keysym.lower()
+			if key == &quot;escape&quot;: #ESC
+				return False
+			elif key == &quot;n&quot;: #Enter
+				self.game.new_game()
+			elif key == &quot;1&quot; or key == &quot;2&quot; or key == &quot;3&quot;: 
+				self.game.set_difficulty(int(key)) 
+			elif key == &quot;d&quot;: #Right arrow
+				self.game.set_direction(Direction.forward) 
+			elif key == &quot;a&quot;: #Left arrow
+				self.game.set_direction(Direction.backward)
+			elif key == &quot;w&quot;: #Up arrow
+				self.game.set_direction(Direction.upward)
+			elif key == &quot;s&quot;: #Down arrow
+				self.game.set_direction(Direction.downward)
+			return True
+		def loop(self): 
+			self.game.loop(self)   
+			self.console.after(self.speed, self.loop)
+		def start_game(self):
+			self.console = Tkinter.Tk()
+			self.console.bind_all(&#39;&lt;Key&gt;&#39;, self.press_key)
+			self.console.withdraw()
+			try:
+				self.console.after(self.speed, self.loop)
+				self.console.mainloop()
+			except KeyboardInterrupt: pass
+	Controller()
+	
+def controller_unix():
+	import termios, tty, thread
+	class NonBlockingConsole(object):
+		def __enter__(self):
+			self.old_settings = termios.tcgetattr(sys.stdin)
+			tty.setcbreak(sys.stdin.fileno())
+			return self
+		def __exit__(self, type, value, traceback):
+			termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.old_settings)
+		def get_data(self):
+			if select.select([sys.stdin], [], [], 0) == ([sys.stdin], [], []):
+				return sys.stdin.read(1)
+			return False
+	 
+	class Controller:
+		def __init__(self):
+			self.game = Game(30, 15, 3) 
+			self.speed = 300 
+			self.start_game()
+		def press_key(self, nbc):
+			key = str(nbc.get_data())
+			if key == &#39;\x1b&#39;: #ESC
+				return False
+			elif key == &#39;n&#39;: #Enter
+				self.game.new_game()
+			elif key == &#39;1&#39; or key == &#39;2&#39; or key == &#39;3&#39;: 
+				self.game.set_difficulty(int(key)) 
+			elif key == &#39;d&#39;: #Right arrow
+				self.game.set_direction(Direction.forward) 
+			elif key == &#39;a&#39;: #Left arrow
+				self.game.set_direction(Direction.backward)
+			elif key == &#39;w&#39;: #Up arrow
+				self.game.set_direction(Direction.upward)
+			elif key == &#39;s&#39;: #Down arrow
+				self.game.set_direction(Direction.downward)
+			return True
+		def loop(self, threadName): 
+			while self.running:
+				time.sleep(self.speed/1000.0)
+				self.game.loop(self)   
+		def start_game(self):
+			self.running = True
+			thread.start_new_thread(self.loop, (&quot;Thread-1&quot;,))
+			try:
+				with NonBlockingConsole() as nbc:
+					while self.press_key(nbc): pass
+			except KeyboardInterrupt: pass
+			self.running = False
+	Controller()
+	
+if __name__ == &#39;__main__&#39;:
+    if platform.system() == &quot;Windows&quot;:
+        controller_windows()
+    else:
+        controller_unix()</code></pre></noscript></div>
+
+</div>
+
+
+<p></input></p>
+]]></content>
+  </entry>
+  
+</feed>
