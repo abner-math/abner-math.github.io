@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Apps | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/apps/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/apps/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) Mesquita]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
+    <link href="http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
     <updated>2014-10-18T18:30:35-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
+    <id>http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
     <content type="html"><![CDATA[<p>Ahhh, and good and old (or not so old) statistics.</p>
 
 <p>I create this software to help with my homework. In the end, just by doing it I was able to learn much more about statistical models. :)</p>
@@ -26,7 +26,7 @@
 
 <p style="text-align:center;"><img src="/images/posts/mesquita.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
 
 
 

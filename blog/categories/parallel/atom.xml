@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Parallel | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/parallel/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/parallel/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Parallel Genetic Algorithm in C++ Using TBB]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/"/>
+    <link href="http://abner-math.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/"/>
     <updated>2015-10-11T09:55:50-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb</id>
+    <id>http://abner-math.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb</id>
     <content type="html"><![CDATA[<p>I&rsquo;ve just finished my AI course, and the idea of <a href="https://en.wikipedia.org/wiki/Evolutionary_computation">evolutionary computing</a> has appealed me incredibly. Basically, evolutionary computing is a set of algorithms inspired by <a href="https://en.wikipedia.org/wiki/Evolution">Charles Darwin&rsquo;s Theory of Evolution</a> with intent of providing some intel on solving optimization problems. On this category, it&rsquo;s included its most prominent example, the <a href="https://en.wikipedia.org/wiki/Genetic_algorithm">Genetic Algorithm</a>.</p>
 
 <p>But what is the Genetic Algorithm? It&rsquo;s really pretty simple (and beautiful): Genetic Algorithm is a heuristic to search for the best solution of a optimization problem (such as the <a href="https://en.wikipedia.org/wiki/Knapsack_problem">Knapsack problem</a>, finding the best parameters of a neural network, and many others&hellip;), the &lsquo;best&rsquo; here having direct analogy to the Theory of Evolution &lsquo;survival of the fittest&rsquo;.</p>

@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Python | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/python/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/python/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) Mesquita]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
+    <link href="http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
     <updated>2014-10-18T18:30:35-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
+    <id>http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
     <content type="html"><![CDATA[<p>Ahhh, and good and old (or not so old) statistics.</p>
 
 <p>I create this software to help with my homework. In the end, just by doing it I was able to learn much more about statistical models. :)</p>
@@ -26,7 +26,7 @@
 
 <p style="text-align:center;"><img src="/images/posts/mesquita.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
 
 
 
@@ -858,14 +858,14 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PyInvaders]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
     <updated>2014-09-27T12:16:32-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
+    <id>http://abner-math.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
     <content type="html"><![CDATA[<p>The last game of terminal games series, this time a copy of Space Invaders.</p>
 
 <p style="text-align:center;"><img src="/images/posts/pyinvaders.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
 
 
 
@@ -1229,14 +1229,14 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PyPac]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
     <updated>2014-09-19T10:04:09-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
+    <id>http://abner-math.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
     <content type="html"><![CDATA[<p>Here is another game of my series, this time about the classic Pacman.</p>
 
 <p style="text-align:center;"><img src="/images/posts/pypac.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
 
 
 
@@ -1771,14 +1771,14 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PySnake]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
     <updated>2014-09-17T22:26:50-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
+    <id>http://abner-math.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
     <content type="html"><![CDATA[<p>Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, like this one below:</p>
 
 <p style="text-align:center;"><img src="/images/posts/pysnake.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
 
 
 

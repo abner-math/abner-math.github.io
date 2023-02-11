@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Neural Networks | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/neural-networks/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/neural-networks/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Is It a Cat or a Dog? A Neural Network Application in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
     <updated>2016-01-31T13:23:41-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
+    <id>http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
     <content type="html"><![CDATA[<p style="text-align:center;"><img src="/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
 
 <p>From time to time, a website named <a href="http://www.kaggle.com">Kaggle</a> hosts several competitions in the fields of Data Science and Computer Vision. One of those competitions was the <a href="https://www.kaggle.com/c/dogs-vs-cats">Dogs vs. Cats</a> challenge, where the objective was &ldquo;to create an algorithm to distinguish dogs from cats&rdquo;. Although this particular challenge already has been finished, I thought that it&rsquo;d give me a pretty good material to a tutorial. Let&rsquo;s learn how to solve this problem together using OpenCV!</p>

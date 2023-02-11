@@ -2,25 +2,25 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Multithread | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/multithread/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/multithread/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Multithreaded K-Means in Java]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java/"/>
+    <link href="http://abner-math.github.io/blog/2016/03/12/multithreaded-k-means-in-java/"/>
     <updated>2016-03-12T10:13:54-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java</id>
+    <id>http://abner-math.github.io/blog/2016/03/12/multithreaded-k-means-in-java</id>
     <content type="html"><![CDATA[<p>Single-threaded algorithms are fine and intuitive. There&rsquo;s an single execution flow running our program in the exact order we specified it. However, modern CPUs have multiple cores sharing the same memory space, meaning that many instructions can be executed in the same clock cycle. Having an single execution flow would be a wasteful use of the resources we have available. That&rsquo;s where multithread applications come in: It allows the use of <strong>true</strong> parallelism.</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot02.png" /></center>
 
 
 
@@ -34,8 +34,8 @@
 
 <p>Consider the following dataset:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot01.png" />
-<p>You can download it <a href="http://abnerrjo.github.io/downloads/s2.txt">here</a>.</p></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot01.png" />
+<p>You can download it <a href="http://abner-math.github.io/downloads/s2.txt">here</a>.</p></center>
 
 
 <p>Knowing the number of clusters at priori (in the above case, 15), we want to know the center of mass of each cluster (the point on which the distance to all other points in the cluster is the minimal possible). In another words:</p>
@@ -44,7 +44,7 @@
 
 <p>The intuition behind K-Means is as follows: First, assign k random centers. For each data in the dataset calculate the nearest random point and add it to the &ldquo;cluster set&rdquo; of the nearest center. Then, for each cluster set, calculate the mean point and use this mean point as a substitute to the random center. This process is done iteratively until the mean points remain unchanged between one iteration and another (it&rsquo;s said that the algorithm &ldquo;converged&rdquo;). This gif explains the whole process nicely:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/kmeans.gif" /></center>
+<center><img src="http://abner-math.github.io/images/posts/kmeans.gif" /></center>
 
 
 <p>Before implementing this in Java, let&rsquo;s write a simple pseudo-code:</p>
@@ -955,7 +955,7 @@ Time elapsed: 3396ms
 
 <p>By the way, this is the result of the K-Means algorithm for our dataset:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot02.png" /></center>
 
 
 <p>Not bad! :)</p>

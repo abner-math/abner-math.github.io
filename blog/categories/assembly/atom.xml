@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Assembly | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/assembly/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/assembly/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Mixing Assembly and C]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
+    <link href="http://abner-math.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
     <updated>2016-02-27T10:24:56-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
+    <id>http://abner-math.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
     <content type="html"><![CDATA[<p>In many applications, mixing Assembly and C is routine (pun intended). There are many reasons for it, but, in general, you want to use Assembly when you want to deal with the hardware directly or perform a task with maximum speed and minimum use of resources, while you use C to perform some high level stuffs that don&rsquo;t attend the former requirements. In either case, you&rsquo;ll need one integrated system.</p>
 
 <p>There are three ways to mix Assembly and C:</p>
@@ -271,9 +271,9 @@ int main()
   
   <entry>
     <title type="html"><![CDATA[Factorial Function in X86_64 Assembly]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/"/>
+    <link href="http://abner-math.github.io/blog/2016/02/21/factorial-function-in-assembly/"/>
     <updated>2016-02-21T17:08:47-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly</id>
+    <id>http://abner-math.github.io/blog/2016/02/21/factorial-function-in-assembly</id>
     <content type="html"><![CDATA[<p>Lately I&rsquo;ve been reading the book <a href="http://download-mirror.savannah.gnu.org/releases/pgubook/ProgrammingGroundUp-1-0-booksize.pdf">Programming from the Ground Up</a> by Jonathan Barlett. It teaches x86 assembly language programming from the very grounding blocks. Applying the concepts learnt in the book, I&rsquo;ll show you how to write a factorial function in x86_64 Assembly.</p>
 
 <!-- more -->

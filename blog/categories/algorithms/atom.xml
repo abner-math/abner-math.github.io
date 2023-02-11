@@ -2,32 +2,32 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Algorithms | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/algorithms/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/algorithms/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Solving the Sliding Puzzle]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/"/>
+    <link href="http://abner-math.github.io/blog/2015/12/06/solving-the-sliding-puzzle/"/>
     <updated>2015-12-06T17:01:05-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle</id>
-    <content type="html"><![CDATA[<script src="http://abnerrjo.github.io/js/sliding-puzzle/minheap.js"></script>
+    <id>http://abner-math.github.io/blog/2015/12/06/solving-the-sliding-puzzle</id>
+    <content type="html"><![CDATA[<script src="http://abner-math.github.io/js/sliding-puzzle/minheap.js"></script>
 
 
-<script src="http://abnerrjo.github.io/js/sliding-puzzle/sliding-puzzle.js"></script>
+<script src="http://abner-math.github.io/js/sliding-puzzle/sliding-puzzle.js"></script>
 
 
-<script src="http://abnerrjo.github.io/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
+<script src="http://abner-math.github.io/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
 
 
-<p><link href="http://abnerrjo.github.io/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
+<p><link href="http://abner-math.github.io/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
 
 <p>Sliding puzzle is a game composed by 2<sup>n</sup> - 1 pieces dispersed along a board and a blank space. Those pieces are then shuffled and the objective is to rearrange them back to their original form, where the disposition of pieces is on ascending order, like shown below (go on, it&rsquo;s interactive):</p>
 

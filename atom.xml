@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Parsing a Hand-drawn Hash Game]]></title>
-    <link href="http://abnerrjo.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/"/>
+    <link href="http://abner-math.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/"/>
     <updated>2017-06-10T17:11:40-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game</id>
+    <id>http://abner-math.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game</id>
     <content type="html"><![CDATA[<p>In this tutorial I will show you how to parse a hand-drawn hash game with Computer Vision techniques to determine who&rsquo;s the winner (if any). See the example below:</p>
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/XHP72q16iU8" frameborder="0" allowfullscreen></iframe>
@@ -34,7 +34,7 @@
 
 <p>Check the image below:</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hash1.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hash1.png" alt="" /></p>
 
 <p>This is the kind of image we want to deal with. In order to detect each element of that image, we need to segment them. We can do that easily with the OpenCV <code>connectedComponents</code> function. What it does is very simple: For each white pixel of a binary image it associates a label indicating to which group (or connected component) the pixel belongs to. A connected component is a set of white pixels where each pixel is a neighbor of some other white pixel within the same component.</p>
 
@@ -178,11 +178,11 @@
 
 <p>Ok!!! Now we have each element separated, as we can see below:</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hash2.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hash2.png" alt="" /></p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hash3.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hash3.png" alt="" /></p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hash4.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hash4.png" alt="" /></p>
 
 <p>How can we accomplish the detection now? Well, there are many many ways. I&rsquo;m going to diver the machine learning path. We will train a neural network with many examples of &lsquo;x&rsquo; and &lsquo;o&rsquo;, in such way that the next time the user draw any of them, the classifier will know which of them the user drew. Once we know that, we just need to check the alignment and ta-dah! Very simple.</p>
 
@@ -192,19 +192,19 @@
 
 <p>In Calculus, <em>gradient</em> is the rate of change of a function at a given point. Just see image below:</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/gradient.jpg" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/gradient.jpg" alt="" /></p>
 
 <p>This represent the gradient of the f(x) = x<sup>2</sup> function. Obviously, since we are squaring &lsquo;x&rsquo;, higher values of &lsquo;x&rsquo; outputs much higher values of f(x) than lower values of &lsquo;x&rsquo;. Thus, the gradient on the left side is negative (since it is the direction which f(x) changes most) and has a increasing values as &lsquo;x&rsquo; increase. The same can be said about the right side, but with oposite direction.</p>
 
 <p>But what does it have to do with images? Can we calculate gradients of images? Of course yes!!! Images are nothing else than 2D discrete functions.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/gradient_images.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/gradient_images.png" alt="" /></p>
 
 <p>Since we can&rsquo;t know exactly the f(x) for a image, we need to calculate an approximation for the gradient, calculating the difference between two neighbors pixels for each dimension. In fact, this is exactly what the <a href="https://en.wikipedia.org/wiki/Sobel_operator">Sobel filter</a> does.</p>
 
 <p>In possession of both gradients on &lsquo;x&rsquo; and &lsquo;y&rsquo; direction, we can calculate the angle to which the gradient is pointing to by taking the inverse tangent of x and y. For the &lsquo;x&rsquo; symbol, the gradient will point alongside the edges (thus only two directions) while for the &lsquo;o&rsquo; symbol, the gradient will tangent each pixel, and since it&rsquo;s a ellipse, we are going to have gradients pointing to many directions. That way we can distinguish a symbol from another.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hog.jpg" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hog.jpg" alt="" /></p>
 
 <p>Enough talking!! Let&rsquo;s see the code:</p>
 
@@ -1153,9 +1153,9 @@
   
   <entry>
     <title type="html"><![CDATA[Eye Tracking for Mouse Control in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/"/>
     <updated>2017-01-28T08:27:31-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv</id>
+    <id>http://abner-math.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv</id>
     <content type="html"><![CDATA[<p>In this tutorial I will show you how you can control your mouse using only a simple webcam. Nothing fancy, super simple to implementate. Let&rsquo;s get on!</p>
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/jBXS1fbMDjE" frameborder="0" allowfullscreen></iframe>
@@ -1248,7 +1248,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/eye1.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/eye1.png" alt="" /></p>
 
 <p>Now you can see that it&rsquo;s displaying the webcam image. That&rsquo;s something!</p>
 
@@ -1427,7 +1427,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/eye2.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/eye2.png" alt="" /></p>
 
 <p>Looking good so far!</p>
 
@@ -1703,7 +1703,7 @@
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/eye3.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/eye3.png" alt="" /></p>
 
 <p>Excellent!</p>
 
@@ -2160,12 +2160,12 @@
   
   <entry>
     <title type="html"><![CDATA[Multithreaded K-Means in Java]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java/"/>
+    <link href="http://abner-math.github.io/blog/2016/03/12/multithreaded-k-means-in-java/"/>
     <updated>2016-03-12T10:13:54-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/03/12/multithreaded-k-means-in-java</id>
+    <id>http://abner-math.github.io/blog/2016/03/12/multithreaded-k-means-in-java</id>
     <content type="html"><![CDATA[<p>Single-threaded algorithms are fine and intuitive. There&rsquo;s an single execution flow running our program in the exact order we specified it. However, modern CPUs have multiple cores sharing the same memory space, meaning that many instructions can be executed in the same clock cycle. Having an single execution flow would be a wasteful use of the resources we have available. That&rsquo;s where multithread applications come in: It allows the use of <strong>true</strong> parallelism.</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot02.png" /></center>
 
 
 
@@ -2179,8 +2179,8 @@
 
 <p>Consider the following dataset:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot01.png" />
-<p>You can download it <a href="http://abnerrjo.github.io/downloads/s2.txt">here</a>.</p></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot01.png" />
+<p>You can download it <a href="http://abner-math.github.io/downloads/s2.txt">here</a>.</p></center>
 
 
 <p>Knowing the number of clusters at priori (in the above case, 15), we want to know the center of mass of each cluster (the point on which the distance to all other points in the cluster is the minimal possible). In another words:</p>
@@ -2189,7 +2189,7 @@
 
 <p>The intuition behind K-Means is as follows: First, assign k random centers. For each data in the dataset calculate the nearest random point and add it to the &ldquo;cluster set&rdquo; of the nearest center. Then, for each cluster set, calculate the mean point and use this mean point as a substitute to the random center. This process is done iteratively until the mean points remain unchanged between one iteration and another (it&rsquo;s said that the algorithm &ldquo;converged&rdquo;). This gif explains the whole process nicely:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/kmeans.gif" /></center>
+<center><img src="http://abner-math.github.io/images/posts/kmeans.gif" /></center>
 
 
 <p>Before implementing this in Java, let&rsquo;s write a simple pseudo-code:</p>
@@ -3572,7 +3572,7 @@ $(function() {
 
 <p>By the way, this is the result of the K-Means algorithm for our dataset:</p>
 
-<center><img src="http://abnerrjo.github.io/images/posts/Rplot02.png" /></center>
+<center><img src="http://abner-math.github.io/images/posts/Rplot02.png" /></center>
 
 
 <p>Not bad! :)</p>
@@ -4055,9 +4055,9 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Mixing Assembly and C]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
+    <link href="http://abner-math.github.io/blog/2016/02/27/mixing-assembly-and-c/"/>
     <updated>2016-02-27T10:24:56-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
+    <id>http://abner-math.github.io/blog/2016/02/27/mixing-assembly-and-c</id>
     <content type="html"><![CDATA[<p>In many applications, mixing Assembly and C is routine (pun intended). There are many reasons for it, but, in general, you want to use Assembly when you want to deal with the hardware directly or perform a task with maximum speed and minimum use of resources, while you use C to perform some high level stuffs that don&rsquo;t attend the former requirements. In either case, you&rsquo;ll need one integrated system.</p>
 
 <p>There are three ways to mix Assembly and C:</p>
@@ -4438,9 +4438,9 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Factorial Function in X86_64 Assembly]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly/"/>
+    <link href="http://abner-math.github.io/blog/2016/02/21/factorial-function-in-assembly/"/>
     <updated>2016-02-21T17:08:47-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/02/21/factorial-function-in-assembly</id>
+    <id>http://abner-math.github.io/blog/2016/02/21/factorial-function-in-assembly</id>
     <content type="html"><![CDATA[<p>Lately I&rsquo;ve been reading the book <a href="http://download-mirror.savannah.gnu.org/releases/pgubook/ProgrammingGroundUp-1-0-booksize.pdf">Programming from the Ground Up</a> by Jonathan Barlett. It teaches x86 assembly language programming from the very grounding blocks. Applying the concepts learnt in the book, I&rsquo;ll show you how to write a factorial function in x86_64 Assembly.</p>
 
 <!-- more -->
@@ -4895,10 +4895,10 @@ The very first thing we need to do in a function is to store the <code>rbp</code
   
   <entry>
     <title type="html"><![CDATA[Is It a Cat or a Dog? A Neural Network Application in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
     <updated>2016-01-31T13:23:41-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
-    <content type="html"><![CDATA[<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
+    <id>http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
+    <content type="html"><![CDATA[<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
 
 <p>From time to time, a website named <a href="http://www.kaggle.com">Kaggle</a> hosts several competitions in the fields of Data Science and Computer Vision. One of those competitions was the <a href="https://www.kaggle.com/c/dogs-vs-cats">Dogs vs. Cats</a> challenge, where the objective was &ldquo;to create an algorithm to distinguish dogs from cats&rdquo;. Although this particular challenge already has been finished, I thought that it&rsquo;d give me a pretty good material to a tutorial. Let&rsquo;s learn how to solve this problem together using OpenCV!</p>
 
@@ -5233,7 +5233,7 @@ The very first thing we need to do in a function is to store the <code>rbp</code
 
 <p>Now that we have the whole set of descriptors stored in the <code>descriptorsSet</code> variable, we can apply the Bag of words strategy. The Bag of Words algorithm is really simple: First we use a clustering algorithm (such as <a href="https://en.wikipedia.org/wiki/K-means_clustering"><strong>k-means</strong></a>) to obtain k centroids. Each centroid representates a <strong>visual word</strong> (the set of visual words is often called <strong>vocabulary</strong>). For each image, we create a histogram of size M, where M is the number of visual words. Now, for each extracted descriptor from the image, we measure its distance to all visual words, obtaining the index of the nearest one. We use that index to increment the position of histogram corresponding to that index, obtaining, that way, <strong>a histogram of visual words</strong>, that can later be submitted to our neural network.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/ann_2.jpg" alt="" /><br>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/ann_2.jpg" alt="" /><br>
 Source: <a href="http://www.ifp.illinois.edu/~yuhuang/sceneclassification.html">http://www.ifp.illinois.edu/~yuhuang/sceneclassification.html</a></p>
 
 <figure class='code'><figcaption><span>opencv_ann.cpp</span></figcaption><div class="highlight"><table><tr><td class="gutter"><pre class="line-numbers"><span class='line-number'>1</span>
@@ -5303,7 +5303,7 @@ Source: <a href="http://www.ifp.illinois.edu/~yuhuang/sceneclassification.html">
 
 <p>So we need to supply the class name associated to each image (or, more precisely, to each histogram of visual words) in order to enable it to &ldquo;learn&rdquo; the pattern. However, a neural network doesn&rsquo;t understand categorical data. It works by showing numbers in the input layer and numbers in the output layer, and then it will try to adjust its weights in order that a function (called <strong>activation function</strong>) applied to the input numbers results in the output numbers. This process is shown in the image below.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/ann_3.gif" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/ann_3.gif" alt="" /></p>
 
 <p>Since the activation function generally outputs values between 0 and 1, it&rsquo;s usual to encode the classes as a sequence of zeros where only one bit is set to one. This bit is different for each class. For example, consider the example of number of classes = 4. We would then have four codifications:</p>
 
@@ -5788,7 +5788,7 @@ Dog = 01<br></p>
 
 <p>In possess of the confusion matrix, we can easily calculate the <strong>accuracy</strong>, that is the ratio of correctly predicted samples, by simplying summing the diagonal of our confusion matrix (number of correct predictions) and diving by the sum of our cells of our confusion matrix (number of test samples).</p>
 
-<p style="text-align:center;"> <img src="http://abnerrjo.github.io/images/posts/ann_4.png" alt="" /></p>
+<p style="text-align:center;"> <img src="http://abner-math.github.io/images/posts/ann_4.png" alt="" /></p>
 
 <h2>Saving models</h2>
 
@@ -6629,7 +6629,7 @@ Dog = 01<br></p>
 
 <p>Not bad! Not bad at all, considering the difficulty of some images! ;)</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/ann_dog.jpg" alt="" /> <img src="http://abnerrjo.github.io/images/posts/ann_cat.jpg" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/ann_dog.jpg" alt="" /> <img src="http://abner-math.github.io/images/posts/ann_cat.jpg" alt="" /></p>
 
 <p>If you are interested in knowing how the server used to present the live demo in the beginning of this tutorial looks like, you can take a look at the source code below.</p>
 
@@ -7200,19 +7200,19 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Solving the Sliding Puzzle]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle/"/>
+    <link href="http://abner-math.github.io/blog/2015/12/06/solving-the-sliding-puzzle/"/>
     <updated>2015-12-06T17:01:05-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/12/06/solving-the-sliding-puzzle</id>
-    <content type="html"><![CDATA[<script src="http://abnerrjo.github.io/js/sliding-puzzle/minheap.js"></script>
+    <id>http://abner-math.github.io/blog/2015/12/06/solving-the-sliding-puzzle</id>
+    <content type="html"><![CDATA[<script src="http://abner-math.github.io/js/sliding-puzzle/minheap.js"></script>
 
 
-<script src="http://abnerrjo.github.io/js/sliding-puzzle/sliding-puzzle.js"></script>
+<script src="http://abner-math.github.io/js/sliding-puzzle/sliding-puzzle.js"></script>
 
 
-<script src="http://abnerrjo.github.io/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
+<script src="http://abner-math.github.io/js/sliding-puzzle/sliding-puzzle-frontend.js"></script>
 
 
-<p><link href="http://abnerrjo.github.io/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
+<p><link href="http://abner-math.github.io/stylesheets/sliding-puzzle.css" rel="stylesheet" type="text/css"></p>
 
 <p>Sliding puzzle is a game composed by 2<sup>n</sup> - 1 pieces dispersed along a board and a blank space. Those pieces are then shuffled and the objective is to rearrange them back to their original form, where the disposition of pieces is on ascending order, like shown below (go on, it&rsquo;s interactive):</p>
 
@@ -8375,12 +8375,12 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Fingertip Detection in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2015/11/15/fingertip-detection-on-opencv/"/>
     <updated>2015-11-15T00:06:15-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv</id>
+    <id>http://abner-math.github.io/blog/2015/11/15/fingertip-detection-on-opencv</id>
     <content type="html"><![CDATA[<p>Hi! In this tutorial, we will learn how to detect fingertips using OpenCV. You ready? :D</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip1.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip1.png" alt="" /></p>
 
 <!-- more -->
 
@@ -8481,7 +8481,7 @@ $(function() {
 
 <p>The &ldquo;inRange&rdquo; function receives the image that we want to threshold, the interval lower bound, the interval upper bound and the output image. The result is a black and white image, where pixels that have values inside the interval are colored with white, otherwise black.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip2.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip2.png" alt="" /></p>
 
 <p>As you can notice, this is a poor segmentation. We need to do a fine-tuning of HSV bounds in order to get a good segmentation. Since changing the value and recompiling the program is boring, it&rsquo;s better to use trackbars for this task:</p>
 
@@ -8536,7 +8536,7 @@ $(function() {
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip3.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip3.png" alt="" /></p>
 
 <p>Even after adjusting the interval there is too much noise. We need to apply special techniques like <strong>median blur</strong> to remove isolated dots and <strong>dilate</strong> to fill &ldquo;holes&rdquo;:</p>
 
@@ -8583,7 +8583,7 @@ $(function() {
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip4.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip4.png" alt="" /></p>
 
 <p>Hmmm&hellip; Much better! :D But there is still some outliers&hellip; We can fix it by finding the contours of separated objects present in the thresholded image and then using only the object that has the contour with largest area.</p>
 
@@ -8652,7 +8652,7 @@ $(function() {
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip5.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip5.png" alt="" /></p>
 
 <p>The &ldquo;findContours&rdquo; function expects to receive a vector of vector of points, or, in another words, a vector of polygons. There are many detection methods. Here I chose &ldquo;CV_RETR_EXTERNAL&rdquo;, which means it will just return the most external contour, ignoring eventual contours that are inside the most external region. I then compare the areas of the returned polygons (through the &ldquo;contourArea&rdquo; function) to get the largest and then draw it on screen (through the &ldquo;drawContours&rdquo; function). We can see clearly that the result is the contour of my hand with a tiny red line. So we accomplished the task of segmenting our hand successfully. Let&rsquo;s move to the next step.</p>
 
@@ -8739,7 +8739,7 @@ $(function() {
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip6.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip6.png" alt="" /></p>
 
 <p>We are just calculating the convex hull of our largest contour (in order to speed the process). The &ldquo;convexHull&rdquo; function expects to receive a set of polygons, just like the &ldquo;findContours&rdquo; function. Hence, drawing the region on screen follows the same logic.</p>
 
@@ -8814,11 +8814,11 @@ $(function() {
 </span></code></pre></td></tr></table></div></figure>
 
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip7.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip7.png" alt="" /></p>
 
 <p>I drew the convexity defects lines in blue. The &ldquo;convexityDefects&rdquo; function returns a vector of tuples of four values. The first value is the initial point of the defect region. The second value is the ending point of the defect region. The third value is the &ldquo;middle&rdquo; point of the defect region that connects the initial point and the ending point. The result is then two lines: One from the initial point to the middle point and one from middle point to the ending point. What only interests us in the initial point, that is the point where our fingertips are placed. I will draw it to make it more evident.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip8.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip8.png" alt="" /></p>
 
 <p>Ta-da! What sucks, however, is that there are far more points than just our fingertips. We need to do a filtering for only the points of our interest. We can think in some cheap but useful heuristics for that: i) Consider the inner angle between the two lines of the defect region to be between a certain interval; ii) Consider the angle between the initial point and the center of the contour region to be between a certain interval; iii) Consider the length of the line from the initial point to the middle point to be above a certain threshold. I think only those three are enough.</p>
 
@@ -8991,7 +8991,7 @@ $(function() {
 
 <p>And the result is good enough:</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/fingertip10.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/fingertip10.png" alt="" /></p>
 
 <p>The final code can be found below. I improved it by removing the trackbars from the color and, instead of it, allowing the user to click on the region where the hand is located and it will automatically extract the color information from there. Click again to establish a interval of colors. I also put trackbars for the angles, so you can adjust it during the program execution and check the effect of different intervals.</p>
 
@@ -9379,9 +9379,9 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Parallel Genetic Algorithm in C++ Using TBB]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/"/>
+    <link href="http://abner-math.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb/"/>
     <updated>2015-10-11T09:55:50-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb</id>
+    <id>http://abner-math.github.io/blog/2015/10/11/parallel-genetic-algorithm-in-c-plus-plus-using-tbb</id>
     <content type="html"><![CDATA[<p>I&rsquo;ve just finished my AI course, and the idea of <a href="https://en.wikipedia.org/wiki/Evolutionary_computation">evolutionary computing</a> has appealed me incredibly. Basically, evolutionary computing is a set of algorithms inspired by <a href="https://en.wikipedia.org/wiki/Evolution">Charles Darwin&rsquo;s Theory of Evolution</a> with intent of providing some intel on solving optimization problems. On this category, it&rsquo;s included its most prominent example, the <a href="https://en.wikipedia.org/wiki/Genetic_algorithm">Genetic Algorithm</a>.</p>
 
 <p>But what is the Genetic Algorithm? It&rsquo;s really pretty simple (and beautiful): Genetic Algorithm is a heuristic to search for the best solution of a optimization problem (such as the <a href="https://en.wikipedia.org/wiki/Knapsack_problem">Knapsack problem</a>, finding the best parameters of a neural network, and many others&hellip;), the &lsquo;best&rsquo; here having direct analogy to the Theory of Evolution &lsquo;survival of the fittest&rsquo;.</p>
@@ -11170,18 +11170,18 @@ Notice we are using chromosome of size 1. That&rsquo;s because we just want to f
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) Mesquita]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
+    <link href="http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita/"/>
     <updated>2014-10-18T18:30:35-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
+    <id>http://abner-math.github.io/blog/2014/10/18/python-2-dot-7-mesquita</id>
     <content type="html"><![CDATA[<p>Ahhh, and good and old (or not so old) statistics.</p>
 
 <p>I create this software to help with my homework. In the end, just by doing it I was able to learn much more about statistical models. :)</p>
 
 <p>Also, this software was my first attempt in create something with Python GUI, Tkinter. Wow, compared to Swing this one is like heaven!</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/mesquita.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/mesquita.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/e51ffc7453acf0af3426/raw/8ce4b37a0b809c7cafdb432f961ca808d7664a60/Mesquita.py" download="Mesquita.py">Click here to download</a></center>
 
 
 
@@ -12013,9 +12013,9 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[Little Things That Can Make Your Java Programs Better]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/10/18/little-things-that-can-make-your-java-programs-better/"/>
+    <link href="http://abner-math.github.io/blog/2014/10/18/little-things-that-can-make-your-java-programs-better/"/>
     <updated>2014-10-18T11:17:45-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/10/18/little-things-that-can-make-your-java-programs-better</id>
+    <id>http://abner-math.github.io/blog/2014/10/18/little-things-that-can-make-your-java-programs-better</id>
     <content type="html"><![CDATA[<p>On the past months I&rsquo;ve been reading this incredible book called <a href="http://www.amazon.com/Refactoring-Improving-Design-Existing-Code/dp/0201485672">Refactoring: Improving the design of existing code</a>, by Martin Fowler.</p>
 
 <p>This one is classic on Software Engineering, and somewhat changed the way I think about software design in general.</p>
@@ -12584,27 +12584,27 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Java) Hashboom]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/28/java-hashboom/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/28/java-hashboom/"/>
     <updated>2014-09-28T15:19:25-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/28/java-hashboom</id>
+    <id>http://abner-math.github.io/blog/2014/09/28/java-hashboom</id>
     <content type="html"><![CDATA[<p>Here&rsquo;s some fool game I made some time ago in an attempt to learn about Swing. Have fun!</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/hashboom.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/hashboom.png" alt="" /></p>
 
-<p style="text-align:center;"><a href="http://abnerrjo.github.io/downloads/code/Hashboom.jar">Click here to download</a></p>
+<p style="text-align:center;"><a href="http://abner-math.github.io/downloads/code/Hashboom.jar">Click here to download</a></p>
 ]]></content>
   </entry>
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PyInvaders]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders/"/>
     <updated>2014-09-27T12:16:32-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
+    <id>http://abner-math.github.io/blog/2014/09/27/python-2-dot-7-pyinvaders</id>
     <content type="html"><![CDATA[<p>The last game of terminal games series, this time a copy of Space Invaders.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/pyinvaders.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/pyinvaders.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/05364c4b67d5ed265871/raw/20d1232a80ba6d335d78acb6f277d3855cb82395/PyInvaders.py" download="PyInvaders.py">Click here to download</a></center>
 
 
 
@@ -12968,14 +12968,14 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PyPac]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/19/python-2-dot-7-pypac/"/>
     <updated>2014-09-19T10:04:09-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
+    <id>http://abner-math.github.io/blog/2014/09/19/python-2-dot-7-pypac</id>
     <content type="html"><![CDATA[<p>Here is another game of my series, this time about the classic Pacman.</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/pypac.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/pypac.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/892bf12a4a185721485f/raw/22189a1fd7443e29256bef4f2ea2f6dd6a7c9f23/PyPac.py" download="PyPac.py">Click here to download</a></center>
 
 
 
@@ -13510,14 +13510,14 @@ if __name__ == &#39;__main__&#39;:
   
   <entry>
     <title type="html"><![CDATA[(Python 2.7) PySnake]]></title>
-    <link href="http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
+    <link href="http://abner-math.github.io/blog/2014/09/17/python-2-dot-7-pysnake/"/>
     <updated>2014-09-17T22:26:50-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
+    <id>http://abner-math.github.io/blog/2014/09/17/python-2-dot-7-pysnake</id>
     <content type="html"><![CDATA[<p>Good night, readers. I&rsquo;m on vacation! Wehoo! To comemorate, I came back to do what I like most, that is to create little games on terminal, like this one below:</p>
 
-<p style="text-align:center;"><img src="http://abnerrjo.github.io/images/posts/pysnake.png" alt="" /></p>
+<p style="text-align:center;"><img src="http://abner-math.github.io/images/posts/pysnake.png" alt="" /></p>
 
-<center><a href="https://gist.githubusercontent.com/abnerrjo/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
+<center><a href="https://gist.githubusercontent.com/abner-math/300f93a9820c52e6a243/raw/916d003c2e82ef3d4026f4cf3e40ef31a6fd9f59/PySnake.py" download="PySnake.py">Click here to download</a></center>
 
 
 

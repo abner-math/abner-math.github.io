@@ -2,22 +2,22 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
 
   <title><![CDATA[Category: Computer Vision | Abner Araujo]]></title>
-  <link href="http://abnerrjo.github.io/blog/categories/computer-vision/atom.xml" rel="self"/>
-  <link href="http://abnerrjo.github.io/"/>
-  <updated>2023-01-15T23:28:12+01:00</updated>
-  <id>http://abnerrjo.github.io/</id>
+  <link href="http://abner-math.github.io/blog/categories/computer-vision/atom.xml" rel="self"/>
+  <link href="http://abner-math.github.io/"/>
+  <updated>2023-02-11T16:19:07+01:00</updated>
+  <id>http://abner-math.github.io/</id>
   <author>
     <name><![CDATA[Abner Araujo]]></name>
-    <email><![CDATA[abner.rjo@gmail.com]]></email>
+    <email><![CDATA[abner.math.c@gmail.com]]></email>
   </author>
   <generator uri="http://octopress.org/">Octopress</generator>
 
   
   <entry>
     <title type="html"><![CDATA[Parsing a Hand-drawn Hash Game]]></title>
-    <link href="http://abnerrjo.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/"/>
+    <link href="http://abner-math.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game/"/>
     <updated>2017-06-10T17:11:40-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game</id>
+    <id>http://abner-math.github.io/blog/2017/06/10/intepreting-a-hand-drawn-hash-game</id>
     <content type="html"><![CDATA[<p>In this tutorial I will show you how to parse a hand-drawn hash game with Computer Vision techniques to determine who&rsquo;s the winner (if any). See the example below:</p>
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/XHP72q16iU8" frameborder="0" allowfullscreen></iframe>
@@ -987,9 +987,9 @@ int main()
   
   <entry>
     <title type="html"><![CDATA[Eye Tracking for Mouse Control in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv/"/>
     <updated>2017-01-28T08:27:31-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv</id>
+    <id>http://abner-math.github.io/blog/2017/01/28/eyeball-tracking-for-mouse-control-in-opencv</id>
     <content type="html"><![CDATA[<p>In this tutorial I will show you how you can control your mouse using only a simple webcam. Nothing fancy, super simple to implementate. Let&rsquo;s get on!</p>
 
 <iframe width="560" height="315" src="https://www.youtube.com/embed/jBXS1fbMDjE" frameborder="0" allowfullscreen></iframe>
@@ -1740,9 +1740,9 @@ int main(...)
   
   <entry>
     <title type="html"><![CDATA[Is It a Cat or a Dog? A Neural Network Application in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv/"/>
     <updated>2016-01-31T13:23:41-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
+    <id>http://abner-math.github.io/blog/2016/01/31/is-it-a-cat-or-dog-a-neural-network-application-in-opencv</id>
     <content type="html"><![CDATA[<p style="text-align:center;"><img src="/images/posts/ann_dog2.jpg" alt="" /><br><i>Who is the good boy?</i></p>
 
 <p>From time to time, a website named <a href="http://www.kaggle.com">Kaggle</a> hosts several competitions in the fields of Data Science and Computer Vision. One of those competitions was the <a href="https://www.kaggle.com/c/dogs-vs-cats">Dogs vs. Cats</a> challenge, where the objective was &ldquo;to create an algorithm to distinguish dogs from cats&rdquo;. Although this particular challenge already has been finished, I thought that it&rsquo;d give me a pretty good material to a tutorial. Let&rsquo;s learn how to solve this problem together using OpenCV!</p>
@@ -3615,9 +3615,9 @@ $(function() {
   
   <entry>
     <title type="html"><![CDATA[Fingertip Detection in OpenCV]]></title>
-    <link href="http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv/"/>
+    <link href="http://abner-math.github.io/blog/2015/11/15/fingertip-detection-on-opencv/"/>
     <updated>2015-11-15T00:06:15-03:00</updated>
-    <id>http://abnerrjo.github.io/blog/2015/11/15/fingertip-detection-on-opencv</id>
+    <id>http://abner-math.github.io/blog/2015/11/15/fingertip-detection-on-opencv</id>
     <content type="html"><![CDATA[<p>Hi! In this tutorial, we will learn how to detect fingertips using OpenCV. You ready? :D</p>
 
 <p style="text-align:center;"><img src="/images/posts/fingertip1.png" alt="" /></p>
